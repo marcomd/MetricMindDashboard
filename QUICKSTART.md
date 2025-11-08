@@ -1,19 +1,20 @@
 # Quick Start Guide
 
-## 🚀 Running the Dashboard
-
-### Prerequisites
+## Prerequisites
 - Node.js 22+ installed
 - PostgreSQL database with git analytics data
 - Environment variables configured in `.env`
+
+## Running the Dashboard
 
 ### Start Development Servers
 
 **Recommended: Clean start (if you have issues)**
 ```bash
-# This script do all the work for you
+# This script does all the work for you
 ./start.sh
 
+# Or manually:
 # Kill any existing processes
 pkill -9 node
 
@@ -29,57 +30,28 @@ npm run dev
 npm run dev
 ```
 
+This starts both:
+- Express API server on port 3000
+- React frontend on port 5173
+
 ### Access the Dashboard
 
 - **Frontend**: http://localhost:5173
 - **Backend API**: http://localhost:3000/api
 - **Health Check**: http://localhost:3000/health
 
-## 🎨 Features
+## Environment Variables
 
-### Overview Page (`/`)
-- Total repositories, commits, contributors stats with animated counters
-- Repository cards with details
-- Comparison bar chart with gradient colors
+Required in `.env`:
+```
+PGHOST=localhost
+PGPORT=5432
+PGDATABASE=git_analytics
+PGUSER=postgres
+PGPASSWORD=your_password
+```
 
-### Trends Page (`/trends`)
-- Monthly commit trends with smooth area charts
-- Lines added vs deleted visualization
-- Repository selector filter
-- Time range selector (3, 6, 12, 24 months)
-- Average metrics cards
-
-### Contributors Page (`/contributors`)
-- Top 3 podium visualization with medals
-- Horizontal bar chart
-- Detailed statistics table
-- Search functionality
-- Adjustable contributor count (10/20/50/100)
-
-## 🎯 Special Features
-
-### Animations
-- Animated number counters (CountUp effect - 2s duration)
-- Smooth chart transitions (1000ms)
-- Stagger animations for lists (50ms delays)
-- Hover scale effects on cards (105%)
-- Fade-in animations for page loads
-
-### Interactive Filters
-- Repository selector (all repos or specific)
-- Time range selector (multiple options)
-- Search bar for contributors
-- Top N selector for leaderboard
-
-### Design
-- Minimalist & elegant Apple-inspired design
-- Dark mode toggle (persisted in localStorage)
-- Smooth 300ms transitions throughout
-- Soft shadows and refined spacing
-- Responsive mobile layout with hamburger menu
-- Custom styled scrollbars
-
-## 📦 Build for Production
+## Build for Production
 
 ```bash
 # Build frontend
@@ -89,7 +61,11 @@ npm run build
 npm start
 ```
 
-## 🌐 Deploy to Replit
+The production server will:
+- Serve the built React app from `client/dist`
+- Run the Express API on port 3000
+
+## Deploy to Replit
 
 1. Push code to GitHub
 2. Import to Replit
@@ -102,18 +78,7 @@ npm start
 4. Click "Run" - Replit will use `.replit` config
 5. Deploy using the Deploy button
 
-## 🔧 Environment Variables
-
-Required in `.env`:
-```
-PGHOST=localhost
-PGPORT=5432
-PGDATABASE=git_analytics
-PGUSER=postgres
-PGPASSWORD=your_password
-```
-
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Port already in use
 ```bash
@@ -139,21 +104,9 @@ npm run dev
 - Ensure PostgreSQL is running
 - Verify database name and permissions
 
-## 🏆 Hackathon Tips
+## Usage Tips
 
-1. **Demo the animations**: Show the animated counters and smooth transitions
-2. **Toggle dark mode**: Demonstrate the instant theme switch
-3. **Use filters**: Show how you can drill down into specific repos and time ranges
-4. **Highlight the podium**: The top 3 contributors visualization is eye-catching
-5. **Show responsiveness**: Resize the browser to show mobile layout
-6. **Showcase data**: Point out the real-time data from your PostgreSQL database
-
-## 🎨 Color Palette
-
-- **Primary Blue**: `#3b82f6` (buttons, accents)
-- **Purple**: `#8b5cf6` (secondary stats)
-- **Green**: `#10b981` (success, positive metrics)
-- **Orange**: `#f59e0b` (warnings, highlights)
-- **Background**: White / Gray-900 (dark mode)
-
-Good luck with your hackathon! 🎉
+- Use the repository selector to filter data by specific repository
+- Toggle dark mode with the sun/moon button in the header
+- Adjust time ranges and contributor counts using the filter controls
+- Check the health endpoint to verify the API is running correctly
