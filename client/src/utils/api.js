@@ -13,11 +13,18 @@ const api = axios.create({
 export const fetchRepos = () => api.get('/repos');
 
 // Trends endpoints
-export const fetchGlobalMonthlyTrends = () => api.get('/monthly-trends');
-export const fetchMonthlyTrends = (repoName) => api.get(`/monthly-trends/${repoName}`);
+export const fetchGlobalMonthlyTrends = (limit = 12) => api.get(`/monthly-trends?limit=${limit}`);
+export const fetchMonthlyTrends = (repoName, limit = 12) => api.get(`/monthly-trends/${repoName}?limit=${limit}`);
 
-// Contributors endpoint
-export const fetchContributors = (limit = 20) => api.get(`/contributors?limit=${limit}`);
+// Contributors endpoints
+export const fetchContributors = (limit = 20, repo = null, dateFrom = null, dateTo = null) => {
+  let url = `/contributors?limit=${limit}`;
+  if (repo && repo !== 'all') url += `&repo=${repo}`;
+  if (dateFrom) url += `&dateFrom=${dateFrom}`;
+  if (dateTo) url += `&dateTo=${dateTo}`;
+  return api.get(url);
+};
+export const fetchContributorsDateRange = () => api.get('/contributors/date-range');
 
 // Activity endpoints
 export const fetchDailyActivity = (days = 30) => api.get(`/daily-activity?days=${days}`);

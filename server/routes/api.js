@@ -29,6 +29,7 @@ router.get('/repos', async (req, res) => {
 // Get monthly trends for all repositories (global)
 router.get('/monthly-trends', async (req, res) => {
   try {
+    const limit = req.query.limit || 12;
     const result = await pool.query(`
       SELECT
         year_month,
@@ -43,8 +44,8 @@ router.get('/monthly-trends', async (req, res) => {
       FROM mv_monthly_stats_by_repo
       GROUP BY year_month, month_start_date
       ORDER BY month_start_date DESC
-      LIMIT 12
-    `);
+      LIMIT $1
+    `, [limit]);
     res.json(result.rows);
   } catch (err) {
     console.error('Error fetching global monthly trends:', err);
@@ -56,6 +57,7 @@ router.get('/monthly-trends', async (req, res) => {
 router.get('/monthly-trends/:repoName', async (req, res) => {
   try {
     const { repoName } = req.params;
+    const limit = req.query.limit || 12;
     const result = await pool.query(`
       SELECT
         year_month,
@@ -70,8 +72,8 @@ router.get('/monthly-trends/:repoName', async (req, res) => {
       FROM mv_monthly_stats_by_repo
       WHERE repository_name = $1
       ORDER BY month_start_date DESC
-      LIMIT 12
-    `, [repoName]);
+      LIMIT $2
+    `, [repoName, limit]);
     res.json(result.rows);
   } catch (err) {
     console.error('Error fetching monthly trends:', err);
@@ -83,22 +85,106 @@ router.get('/monthly-trends/:repoName', async (req, res) => {
 router.get('/contributors', async (req, res) => {
   try {
     const limit = req.query.limit || 20;
-    const result = await pool.query(`
-      SELECT
-        author_name,
-        author_email,
-        total_commits,
-        repositories_contributed,
-        total_lines_changed,
-        avg_lines_changed_per_commit
-      FROM v_contributor_stats
-      ORDER BY total_commits DESC
-      LIMIT $1
-    `, [limit]);
-    res.json(result.rows);
+    const repo = req.query.repo;
+    const dateFrom = req.query.dateFrom;
+    const dateTo = req.query.dateTo;
+
+    // Check if we need to use custom query (only when actual filters are applied beyond defaults)
+    const hasRepoFilter = repo && repo !== 'all';
+    const hasDateFilter = dateFrom || dateTo;
+
+    if (hasRepoFilter || hasDateFilter) {
+      let query = `
+        WITH normalized_commits AS (
+          SELECT
+            c.*,
+            LOWER(TRIM(c.author_name)) as normalized_name,
+            LOWER(TRIM(c.author_email)) as normalized_email
+          FROM commits c
+      `;
+
+      const conditions = [];
+      const params = [];
+      let paramIndex = 1;
+
+      if (hasRepoFilter) {
+        query += `
+          JOIN repositories r ON c.repository_id = r.id
+        `;
+        conditions.push(`r.name = $${paramIndex}`);
+        params.push(repo);
+        paramIndex++;
+      }
+
+      if (dateFrom) {
+        conditions.push(`c.commit_date >= $${paramIndex}`);
+        params.push(dateFrom);
+        paramIndex++;
+      }
+
+      if (dateTo) {
+        conditions.push(`c.commit_date <= $${paramIndex}`);
+        params.push(dateTo);
+        paramIndex++;
+      }
+
+      if (conditions.length > 0) {
+        query += ' WHERE ' + conditions.join(' AND ');
+      }
+
+      query += `
+        )
+        SELECT
+          MAX(author_name) as author_name,
+          MAX(author_email) as author_email,
+          COUNT(id)::int as total_commits,
+          COUNT(DISTINCT repository_id)::int as repositories_contributed,
+          SUM(lines_added + lines_deleted)::bigint as total_lines_changed,
+          ROUND(AVG(lines_added + lines_deleted)::numeric, 1) as avg_lines_changed_per_commit
+        FROM normalized_commits
+        GROUP BY normalized_name
+        ORDER BY total_commits DESC
+        LIMIT $${paramIndex}
+      `;
+      params.push(limit);
+
+      const result = await pool.query(query, params);
+      res.json(result.rows);
+    } else {
+      // Use the materialized view for faster queries when no filters
+      const result = await pool.query(`
+        SELECT
+          author_name,
+          author_email,
+          total_commits,
+          repositories_contributed,
+          total_lines_changed,
+          avg_lines_changed_per_commit
+        FROM v_contributor_stats
+        ORDER BY total_commits DESC
+        LIMIT $1
+      `, [limit]);
+      res.json(result.rows);
+    }
   } catch (err) {
     console.error('Error fetching contributors:', err);
     res.status(500).json({ error: 'Failed to fetch contributors' });
+  }
+});
+
+// Get date range for contributors (min and max commit dates)
+router.get('/contributors/date-range', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT
+        MIN(commit_date) as min_date,
+        MAX(commit_date) as max_date
+      FROM commits
+    `);
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('Error fetching date range:', err);
+    res.status(500).json({ error: 'Failed to fetch date range' });
   }
 });
 

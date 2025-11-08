@@ -13,6 +13,7 @@ function Trends() {
   const [loading, setLoading] = useState(true);
   const [dataLoading, setDataLoading] = useState(false);
   const [monthsToShow, setMonthsToShow] = useState(12);
+  const [perCommitter, setPerCommitter] = useState(false);
 
   useEffect(() => {
     fetchRepos().then(res => {
@@ -28,13 +29,13 @@ function Trends() {
     if (selectedRepo) {
       setDataLoading(true);
       const fetchData = selectedRepo === 'all'
-        ? fetchGlobalMonthlyTrends()
-        : fetchMonthlyTrends(selectedRepo);
+        ? fetchGlobalMonthlyTrends(monthsToShow)
+        : fetchMonthlyTrends(selectedRepo, monthsToShow);
 
       fetchData.then(res => {
         // Reverse to show oldest first
         const reversedData = [...res.data].reverse();
-        setTrends(reversedData.slice(-monthsToShow));
+        setTrends(reversedData);
         setDataLoading(false);
       }).catch(err => {
         console.error('Error fetching trends:', err);
@@ -43,12 +44,32 @@ function Trends() {
     }
   }, [selectedRepo, monthsToShow]);
 
+  // Transform data to per-committer averages
+  const transformToPerCommitter = (data) => {
+    return data.map(month => {
+      const authors = selectedRepo === 'all'
+        ? (month.total_authors || month.unique_authors || 1)
+        : (month.unique_authors || 1);
+
+      return {
+        ...month,
+        total_commits: parseFloat((month.total_commits / authors).toFixed(1)),
+        total_lines_added: parseFloat((month.total_lines_added / authors).toFixed(1)),
+        total_lines_deleted: parseFloat((month.total_lines_deleted / authors).toFixed(1)),
+        total_lines_changed: parseFloat((month.total_lines_changed / authors).toFixed(1)),
+      };
+    });
+  };
+
+  // Use transformed or original data based on checkbox
+  const displayData = perCommitter ? transformToPerCommitter(trends) : trends;
+
   if (loading) {
     return <LoadingSpinner />;
   }
 
-  const avgCommitsPerMonth = trends.length > 0
-    ? Math.round(trends.reduce((sum, t) => sum + (t.total_commits || 0), 0) / trends.length)
+  const avgCommitsPerMonth = displayData.length > 0
+    ? displayData.reduce((sum, t) => sum + Number(t.total_commits || 0), 0) / displayData.length
     : 0;
 
   const avgLinesPerCommit = trends.length > 0
@@ -56,7 +77,7 @@ function Trends() {
     : 0;
 
   const avgAuthorsPerMonth = trends.length > 0
-    ? Math.round(trends.reduce((sum, t) => sum + (selectedRepo === 'all' ? (t.total_authors || t.unique_authors || 0) : (t.unique_authors || 0)), 0) / trends.length)
+    ? trends.reduce((sum, t) => sum + Number(selectedRepo === 'all' ? (t.total_authors || t.unique_authors || 0) : (t.unique_authors || 0)), 0) / trends.length
     : 0;
 
   return (
@@ -95,6 +116,17 @@ function Trends() {
             <option value={12}>Last 12 Months</option>
             <option value={24}>Last 24 Months</option>
           </select>
+
+          {/* Per Committer Checkbox */}
+          <label className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-300">
+            <input
+              type="checkbox"
+              checked={perCommitter}
+              onChange={(e) => setPerCommitter(e.target.checked)}
+              className="w-4 h-4 text-primary-600 bg-gray-100 border-gray-300 rounded focus:ring-primary-500 focus:ring-2"
+            />
+            <span className="text-sm font-medium whitespace-nowrap">👤 Per Committer</span>
+          </label>
         </div>
       </div>
 
@@ -105,10 +137,10 @@ function Trends() {
           {/* Commits Over Time */}
           <div className="card">
             <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-              Commits Over Time
+              Commits Over Time{perCommitter && ' (per committer)'}
             </h3>
             <ResponsiveContainer width="100%" height={300}>
-              <AreaChart data={trends}>
+              <AreaChart data={displayData}>
                 <defs>
                   <linearGradient id="colorCommits" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
@@ -129,6 +161,7 @@ function Trends() {
                     borderRadius: '8px',
                     boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
                   }}
+                  formatter={(value) => perCommitter ? value.toFixed(1) : value}
                 />
                 <Area
                   type="monotone"
@@ -138,6 +171,7 @@ function Trends() {
                   fillOpacity={1}
                   fill="url(#colorCommits)"
                   animationDuration={1000}
+                  name={perCommitter ? "Commits (per committer)" : "Commits"}
                 />
               </AreaChart>
             </ResponsiveContainer>
@@ -146,10 +180,10 @@ function Trends() {
           {/* Lines Changed */}
           <div className="card">
             <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-              Lines Added vs Deleted
+              Lines Changed vs Added vs Deleted{perCommitter && ' (per committer)'}
             </h3>
             <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={trends}>
+              <LineChart data={displayData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                 <XAxis
                   dataKey="year_month"
@@ -164,14 +198,25 @@ function Trends() {
                     borderRadius: '8px',
                     boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
                   }}
+                  formatter={(value) => perCommitter ? value.toFixed(1) : value}
                 />
                 <Legend />
+                <Line
+                  type="monotone"
+                  dataKey="total_lines_changed"
+                  stroke="#3b82f6"
+                  strokeWidth={2}
+                  name={perCommitter ? "Lines Changed (per committer)" : "Lines Changed"}
+                  animationDuration={1000}
+                  dot={{ r: 4 }}
+                  activeDot={{ r: 6 }}
+                />
                 <Line
                   type="monotone"
                   dataKey="total_lines_added"
                   stroke="#10b981"
                   strokeWidth={2}
-                  name="Lines Added"
+                  name={perCommitter ? "Lines Added (per committer)" : "Lines Added"}
                   animationDuration={1000}
                   dot={{ r: 4 }}
                   activeDot={{ r: 6 }}
@@ -181,7 +226,7 @@ function Trends() {
                   dataKey="total_lines_deleted"
                   stroke="#ef4444"
                   strokeWidth={2}
-                  name="Lines Deleted"
+                  name={perCommitter ? "Lines Deleted (per committer)" : "Lines Deleted"}
                   animationDuration={1000}
                   dot={{ r: 4 }}
                   activeDot={{ r: 6 }}
@@ -195,12 +240,15 @@ function Trends() {
             <div className="card">
               <div className="flex items-center justify-between mb-2">
                 <h4 className="text-sm text-gray-600 dark:text-gray-400">
-                  Avg Commits/Month
+                  Avg Commits/Month{perCommitter && ' (per committer)'}
                 </h4>
                 <span className="text-2xl">📈</span>
               </div>
               <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                {avgCommitsPerMonth.toLocaleString()}
+                {perCommitter
+                  ? avgCommitsPerMonth.toFixed(1)
+                  : Math.round(avgCommitsPerMonth).toLocaleString()
+                }
               </p>
             </div>
             <div className="card">
@@ -222,7 +270,7 @@ function Trends() {
                 <span className="text-2xl">👥</span>
               </div>
               <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                {avgAuthorsPerMonth}
+                {avgAuthorsPerMonth.toFixed(1)}
               </p>
             </div>
           </div>

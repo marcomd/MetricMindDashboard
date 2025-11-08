@@ -1,23 +1,47 @@
 import { useEffect, useState } from 'react';
-import { fetchContributors } from '../utils/api';
+import { fetchContributors, fetchRepos, fetchContributorsDateRange } from '../utils/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 function Contributors() {
   const [contributors, setContributors] = useState([]);
+  const [repos, setRepos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [limitCount, setLimitCount] = useState(20);
+  const [selectedRepo, setSelectedRepo] = useState('all');
+  const [dateRange, setDateRange] = useState({ min_date: null, max_date: null });
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
 
+  // Fetch repos and date range on mount
   useEffect(() => {
-    fetchContributors(limitCount).then(res => {
+    Promise.all([
+      fetchRepos(),
+      fetchContributorsDateRange()
+    ]).then(([reposRes, dateRangeRes]) => {
+      setRepos(reposRes.data);
+      setDateRange(dateRangeRes.data);
+      // Don't set default dates - leave them empty to use unfiltered view
+    }).catch(err => {
+      console.error('Error fetching initial data:', err);
+    });
+  }, []);
+
+  // Fetch contributors when filters change
+  useEffect(() => {
+    setLoading(true);
+    // Only pass date filters if they're explicitly set
+    const from = dateFrom || null;
+    const to = dateTo || null;
+    fetchContributors(limitCount, selectedRepo, from, to).then(res => {
       setContributors(res.data);
       setLoading(false);
     }).catch(err => {
       console.error('Error fetching contributors:', err);
       setLoading(false);
     });
-  }, [limitCount]);
+  }, [limitCount, selectedRepo, dateFrom, dateTo]);
 
   if (loading) {
     return <LoadingSpinner />;
@@ -40,27 +64,89 @@ function Contributors() {
     '#ef4444', // red
   ];
 
+  // Generate month/year options for date range selectors
+  const generateDateOptions = () => {
+    if (!dateRange.min_date || !dateRange.max_date) return [];
+
+    const options = [];
+    const start = new Date(dateRange.min_date);
+    const end = new Date(dateRange.max_date);
+
+    let current = new Date(start.getFullYear(), start.getMonth(), 1);
+    while (current <= end) {
+      const yearMonth = `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}-01`;
+      const label = current.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
+      options.push({ value: yearMonth, label });
+      current.setMonth(current.getMonth() + 1);
+    }
+
+    return options;
+  };
+
+  const dateOptions = generateDateOptions();
+
   return (
     <div className="space-y-8 fade-in">
-      {/* Header with Search */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            Top Contributors
-          </h2>
-          <p className="text-gray-600 dark:text-gray-400">
-            Leaderboard of most active developers
-          </p>
+      {/* Header with Filters */}
+      <div className="space-y-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+              Top Contributors
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400">
+              Leaderboard of most active developers
+            </p>
+          </div>
         </div>
-        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+
+        {/* Filters Row */}
+        <div className="flex flex-col lg:flex-row gap-3">
+          {/* Repository Selector */}
+          <select
+            value={selectedRepo}
+            onChange={(e) => setSelectedRepo(e.target.value)}
+            className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white transition-all duration-300 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+          >
+            <option value="all">All Repositories</option>
+            {repos.map(repo => (
+              <option key={repo.id} value={repo.name}>{repo.name}</option>
+            ))}
+          </select>
+
+          {/* Date From Selector */}
+          <select
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white transition-all duration-300 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+          >
+            <option value="">From...</option>
+            {dateOptions.map(opt => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+
+          {/* Date To Selector */}
+          <select
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white transition-all duration-300 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+          >
+            <option value="">To...</option>
+            {dateOptions.map(opt => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+
           {/* Search Bar */}
           <input
             type="text"
             placeholder="Search contributors..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white transition-all duration-300 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white transition-all duration-300 focus:ring-2 focus:ring-primary-500 focus:border-transparent flex-grow"
           />
+
           {/* Limit Selector */}
           <select
             value={limitCount}
@@ -81,7 +167,7 @@ function Contributors() {
           {/* 2nd Place */}
           <div className="flex flex-col items-center stagger-item">
             <div className="text-4xl mb-2">🥈</div>
-            <div className="bg-gradient-to-br from-gray-300 to-gray-400 text-white rounded-t-xl p-4 h-32 w-28 sm:w-32 flex flex-col justify-end items-center shadow-lg hover:scale-105 transition-transform duration-300">
+            <div className="bg-gradient-to-br from-gray-300 to-gray-400 text-white rounded-t-xl p-4 h-40 w-28 sm:w-32 flex flex-col justify-end items-center shadow-lg hover:scale-105 transition-transform duration-300">
               <p className="font-bold text-center text-xs sm:text-sm mb-1 line-clamp-1">
                 {topThree[1].author_name}
               </p>
@@ -93,7 +179,7 @@ function Contributors() {
           {/* 1st Place */}
           <div className="flex flex-col items-center stagger-item">
             <div className="text-5xl mb-2">🏆</div>
-            <div className="bg-gradient-to-br from-yellow-400 to-yellow-500 text-white rounded-t-xl p-4 h-40 w-28 sm:w-32 flex flex-col justify-end items-center shadow-lg hover:scale-105 transition-transform duration-300">
+            <div className="bg-gradient-to-br from-yellow-400 to-yellow-500 text-white rounded-t-xl p-4 h-48 w-28 sm:w-32 flex flex-col justify-end items-center shadow-lg hover:scale-105 transition-transform duration-300">
               <p className="font-bold text-center text-xs sm:text-sm mb-1 line-clamp-1">
                 {topThree[0].author_name}
               </p>
@@ -105,7 +191,7 @@ function Contributors() {
           {/* 3rd Place */}
           <div className="flex flex-col items-center stagger-item">
             <div className="text-4xl mb-2">🥉</div>
-            <div className="bg-gradient-to-br from-orange-300 to-orange-400 text-white rounded-t-xl p-4 h-24 w-28 sm:w-32 flex flex-col justify-end items-center shadow-lg hover:scale-105 transition-transform duration-300">
+            <div className="bg-gradient-to-br from-orange-300 to-orange-400 text-white rounded-t-xl p-4 h-32 w-28 sm:w-32 flex flex-col justify-end items-center shadow-lg hover:scale-105 transition-transform duration-300">
               <p className="font-bold text-center text-xs sm:text-sm mb-1 line-clamp-1">
                 {topThree[2].author_name}
               </p>
