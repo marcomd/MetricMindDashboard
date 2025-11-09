@@ -78,6 +78,12 @@ function Layout() {
                 >
                   Comparison
                 </Link>
+                <Link
+                  to="/before-after"
+                  className={`nav-link ${isActive('/before-after') ? 'text-primary-600 dark:text-primary-400' : ''}`}
+                >
+                  Before/After
+                </Link>
               </nav>
 
               {/* Dark Mode Toggle */}
@@ -152,6 +158,13 @@ function Layout() {
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Comparison
+                </Link>
+                <Link
+                  to="/before-after"
+                  className={`block py-2 px-4 rounded-lg ${isActive('/before-after') ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400' : 'text-gray-600 dark:text-gray-300'} hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-300`}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Before/After
                 </Link>
               </nav>
             )}

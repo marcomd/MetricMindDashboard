@@ -82,7 +82,9 @@ npm run preview
   - `Contributors.jsx` - Top contributors with podium, charts, and searchable table
   - `Activity.jsx` - Calendar heatmap and daily activity patterns
   - `Comparison.jsx` - Side-by-side repository metrics comparison
+  - `BeforeAfter.jsx` - Before/After analysis with date pickers and quick-action buttons
 - `client/src/utils/api.js` - Axios API client with all endpoint functions
+- `client/src/utils/dateFormat.js` - Date formatting utilities for consistent dd/mm/yyyy display
 
 **Routing Pattern:**
 ```javascript
@@ -91,6 +93,7 @@ npm run preview
 /contributors → Contributors
 /activity → Activity
 /comparison → Comparison
+/before-after → BeforeAfter
 ```
 
 ### API Client Pattern
@@ -191,6 +194,41 @@ Commits can be categorized by:
 - **Work Types**: Derived from branch names (feature/*, bugfix/*, hotfix/*)
 
 Related views: `v_category_stats`, `v_work_type_stats`, `v_category_by_repo`
+
+## Date Formatting Convention
+
+**Project Standard: dd/mm/yyyy format**
+
+All dates displayed to users should follow the **dd/mm/yyyy** format (e.g., 25/12/2024).
+
+**Utility Functions:**
+Use `client/src/utils/dateFormat.js` for consistent date handling:
+
+```javascript
+import { formatDate, toISOFormat, fromISOFormat, addMonths } from '../utils/dateFormat';
+
+// Format a Date object or ISO string for display
+formatDate(new Date())  // "25/12/2024"
+
+// Convert dd/mm/yyyy to yyyy-mm-dd (for HTML date inputs and API calls)
+toISOFormat("25/12/2024")  // "2024-12-25"
+
+// Convert yyyy-mm-dd to dd/mm/yyyy (for display)
+fromISOFormat("2024-12-25")  // "25/12/2024"
+
+// Add months to a date (yyyy-mm-dd format)
+addMonths("2024-01-15", 6)  // "2024-07-15"
+```
+
+**HTML Date Inputs:**
+- HTML `<input type="date">` uses yyyy-mm-dd format internally
+- Store dates in state as yyyy-mm-dd
+- Convert to dd/mm/yyyy only when displaying formatted text
+
+**Database Dates:**
+- PostgreSQL dates are handled as UTC
+- API expects yyyy-mm-dd format
+- Convert to dd/mm/yyyy for user-facing displays
 
 ## Important Notes
 

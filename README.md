@@ -140,7 +140,7 @@ The dashboard includes the following pages:
      - Visual patterns reveal work habits
      - Interactive filtering and date range selection
 
-5. **Comparison** (future)
+5. **Comparison** (`/comparison`)
   - **Purpose**: Compare repositories side-by-side
   - **Key Components**:
     - Side-by-side metrics cards for each repository
@@ -152,24 +152,25 @@ The dashboard includes the following pages:
     - Clear visual differentiation between repositories
     - Insights into resource allocation and project health
 
-6. **Before/After Analysis** (future)
+6. **Before/After Analysis** (`/before-after`)
   - **Purpose**: Measure impact of changes (new tools, processes, team changes)
-    - **Key Components**:
-      - Repository selector
-      - Date range pickers for "Before" and "After" periods
-      - Split-screen comparison cards showing metrics side-by-side
-      - Percentage change indicators (↑ ↓) with color coding
-      - Visualization comparing the two periods
-    - **Metrics to Compare**:
-      - Average commits per month
-      - Average lines changed per commit
-      - Average contributors per month
-      - Total lines added/deleted
+  - **Key Components**:
+    - Repository selector
+    - Date range pickers for "Before" and "After" periods
+    - Quick-action buttons (→ 3/6/12 months) to auto-set After period dates
+    - Split-screen comparison cards showing metrics side-by-side
+    - Percentage change indicators (↑ ↓) with color coding
+    - Visualization comparing the two periods
+    - Automated insights section highlighting key changes
+  - **Metrics to Compare**:
+    - Average commits per month
+    - Average lines changed per commit
+    - Average contributors per month
   - **User Experience**:
     - Clear visual separation of "before" vs "after"
     - Prominent percentage changes (green for improvement, red for decline)
+    - Quick setup with preset time period buttons
     - Easy reconfiguration of time periods
-    - Shareable results (export or URL parameters)
 
 
 ### API Endpoints
@@ -309,13 +310,13 @@ Ports:
 
 ### Future Enhancements
 
-- Activity Heatmap page (calendar-style visualization)
-- Repository Comparison page with multi-series charts
-- Before/After Analysis page with split views
 - Real-time updates with WebSockets
 - Export functionality (PDF, CSV)
 - Advanced filtering and date range selectors
 - User authentication and authorization
+- URL parameter sharing for Before/After analysis results
+- Category and work type analytics pages
+- Custom date range presets
 
 ## Roadmap
 
