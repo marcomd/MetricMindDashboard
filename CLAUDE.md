@@ -273,6 +273,9 @@ Create a `.env` file in the root directory:
 
 ```env
 # Database
+# Option 1: Use DATABASE_URL (takes priority over individual parameters)
+DATABASE_URL=postgresql://user:password@host:port/database
+# Option 2: Use individual parameters (if DATABASE_URL is not set)
 PGHOST=localhost
 PGPORT=5432
 PGDATABASE=git_analytics
