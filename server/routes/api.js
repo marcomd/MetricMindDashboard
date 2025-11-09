@@ -269,4 +269,191 @@ router.get('/before-after/:repoName', async (req, res) => {
   }
 });
 
+// Get category statistics with optional filters
+router.get('/categories', async (req, res) => {
+  try {
+    const repo = req.query.repo;
+    const dateFrom = req.query.dateFrom;
+    const dateTo = req.query.dateTo;
+
+    const hasRepoFilter = repo && repo !== 'all';
+    const hasDateFilter = dateFrom || dateTo;
+
+    if (hasRepoFilter || hasDateFilter) {
+      // Custom query with filters
+      let query = `
+        SELECT
+          COALESCE(c.category, 'UNCATEGORIZED') as category,
+          COUNT(c.id)::int as total_commits,
+          SUM(c.lines_added + c.lines_deleted)::bigint as total_lines_changed,
+          COUNT(DISTINCT c.author_email)::int as unique_authors,
+          COUNT(DISTINCT c.repository_id)::int as repositories
+        FROM commits c
+      `;
+
+      const conditions = [];
+      const params = [];
+      let paramIndex = 1;
+
+      if (hasRepoFilter) {
+        query += ` JOIN repositories r ON c.repository_id = r.id `;
+        conditions.push(`r.name = $${paramIndex}`);
+        params.push(repo);
+        paramIndex++;
+      }
+
+      if (dateFrom) {
+        conditions.push(`c.commit_date >= $${paramIndex}`);
+        params.push(dateFrom);
+        paramIndex++;
+      }
+
+      if (dateTo) {
+        conditions.push(`c.commit_date <= $${paramIndex}`);
+        params.push(dateTo);
+        paramIndex++;
+      }
+
+      if (conditions.length > 0) {
+        query += ' WHERE ' + conditions.join(' AND ');
+      }
+
+      query += `
+        GROUP BY c.category
+        ORDER BY total_commits DESC
+      `;
+
+      const result = await pool.query(query, params);
+      res.json(result.rows);
+    } else {
+      // Use view for unfiltered queries
+      const result = await pool.query(`
+        SELECT
+          category,
+          total_commits,
+          total_lines_changed,
+          unique_authors,
+          repositories
+        FROM v_category_stats
+        ORDER BY total_commits DESC
+      `);
+      res.json(result.rows);
+    }
+  } catch (err) {
+    console.error('Error fetching categories:', err);
+    res.status(500).json({ error: 'Failed to fetch categories' });
+  }
+});
+
+// Get monthly category trends for stacked area chart
+router.get('/category-trends', async (req, res) => {
+  try {
+    const months = req.query.months || 12;
+    const repo = req.query.repo;
+    const hasRepoFilter = repo && repo !== 'all';
+
+    if (hasRepoFilter) {
+      // Filter by repository
+      const result = await pool.query(`
+        SELECT
+          mcs.year_month,
+          mcs.month_start_date,
+          COALESCE(mcs.category, 'UNCATEGORIZED') as category,
+          mcs.total_commits,
+          mcs.total_lines_changed,
+          mcs.unique_authors
+        FROM mv_monthly_category_stats mcs
+        WHERE mcs.repository_name = $1
+        ORDER BY mcs.month_start_date DESC, mcs.category
+        LIMIT $2
+      `, [repo, months * 20]); // Multiply by estimated categories
+      res.json(result.rows);
+    } else {
+      // All repositories
+      const result = await pool.query(`
+        SELECT
+          year_month,
+          month_start_date,
+          COALESCE(category, 'UNCATEGORIZED') as category,
+          SUM(total_commits)::int as total_commits,
+          SUM(total_lines_changed)::bigint as total_lines_changed,
+          SUM(unique_authors)::int as unique_authors
+        FROM mv_monthly_category_stats
+        GROUP BY year_month, month_start_date, category
+        ORDER BY month_start_date DESC, category
+        LIMIT $1
+      `, [months * 20]); // Multiply by estimated categories
+      res.json(result.rows);
+    }
+  } catch (err) {
+    console.error('Error fetching category trends:', err);
+    res.status(500).json({ error: 'Failed to fetch category trends' });
+  }
+});
+
+// Get category distribution across repositories
+router.get('/category-by-repo', async (req, res) => {
+  try {
+    const dateFrom = req.query.dateFrom;
+    const dateTo = req.query.dateTo;
+    const hasDateFilter = dateFrom || dateTo;
+
+    if (hasDateFilter) {
+      // Custom query with date filters
+      let query = `
+        SELECT
+          r.name as repository,
+          COALESCE(c.category, 'UNCATEGORIZED') as category,
+          COUNT(c.id)::int as total_commits,
+          SUM(c.lines_added + c.lines_deleted)::bigint as total_lines_changed
+        FROM commits c
+        JOIN repositories r ON c.repository_id = r.id
+      `;
+
+      const conditions = [];
+      const params = [];
+      let paramIndex = 1;
+
+      if (dateFrom) {
+        conditions.push(`c.commit_date >= $${paramIndex}`);
+        params.push(dateFrom);
+        paramIndex++;
+      }
+
+      if (dateTo) {
+        conditions.push(`c.commit_date <= $${paramIndex}`);
+        params.push(dateTo);
+        paramIndex++;
+      }
+
+      if (conditions.length > 0) {
+        query += ' WHERE ' + conditions.join(' AND ');
+      }
+
+      query += `
+        GROUP BY r.name, c.category
+        ORDER BY r.name, total_commits DESC
+      `;
+
+      const result = await pool.query(query, params);
+      res.json(result.rows);
+    } else {
+      // Use view for unfiltered queries
+      const result = await pool.query(`
+        SELECT
+          repository,
+          category,
+          total_commits,
+          total_lines_changed
+        FROM v_category_by_repo
+        ORDER BY repository, total_commits DESC
+      `);
+      res.json(result.rows);
+    }
+  } catch (err) {
+    console.error('Error fetching category by repository:', err);
+    res.status(500).json({ error: 'Failed to fetch category by repository' });
+  }
+});
+
 export default router;

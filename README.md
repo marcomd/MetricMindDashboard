@@ -172,6 +172,47 @@ The dashboard includes the following pages:
     - Quick setup with preset time period buttons
     - Easy reconfiguration of time periods
 
+7. **Content Analysis Page** (`content-analysis`)
+  - **Purpose**: Understand **what** business domains developers are working on
+  - **Key Components**:
+    - Category breakdown (pie/donut chart showing distribution)
+      - BILLING, CS, INFRA, etc.
+      - Shows which business areas get most development attention
+    - Category comparison (horizontal bar chart)
+      - Compare effort across all categories
+      - Easy identification of top/bottom categories
+    - Trend charts over time
+      - How category distribution changes month-to-month
+      - Stacked area chart showing category evolution
+    - Category by repository (matrix/heatmap)
+      - Which repos work on which categories
+      - Identify domain ownership patterns
+    - Repository and date range filters
+- **Insights Provided**:
+  - Which business domains get most/least attention
+  - Resource allocation across different work streams
+  - Evolution of work focus over time
+  - Domain ownership patterns across repositories
+  - Neglected areas that may need attention
+- **User Experience**:
+  - Interactive charts with drill-down capability
+  - Filter by repository, date range, and category
+  - Export view for presentations/reports
+  - Tooltip showing details on hover
+  - Color-coding: Different color for each business domain
+  - Percentage and absolute numbers displayed
+- **Example Use Cases**:
+  - "How much effort went into BILLING vs CS last quarter?"
+  - "Are we neglecting infrastructure work?"
+  - "Which categories need more resources?"
+  - "How has our focus shifted after launching the new product?"
+  - "Which repositories contribute to customer service improvements?"
+- **Category Extraction Logic**:
+  - Categories are automatically extracted from commit subjects using:
+    1. Pipe delimiter: `BILLING | Implemented feature` → BILLING
+    2. Square brackets: `[CS] Fixed bug` → CS
+    3. First uppercase word: `BILLING Implemented feature` → BILLING
+    4. If no match: NULL (shown as "UNCATEGORIZED" in UI)
 
 ### API Endpoints
 

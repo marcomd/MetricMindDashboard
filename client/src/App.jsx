@@ -10,6 +10,7 @@ import Contributors from './pages/Contributors';
 import Activity from './pages/Activity';
 import Comparison from './pages/Comparison';
 import BeforeAfter from './pages/BeforeAfter';
+import ContentAnalysis from './pages/ContentAnalysis';
 
 function App() {
   return (
@@ -35,6 +36,7 @@ function App() {
             <Route path="activity" element={<Activity />} />
             <Route path="comparison" element={<Comparison />} />
             <Route path="before-after" element={<BeforeAfter />} />
+            <Route path="content-analysis" element={<ContentAnalysis />} />
           </Route>
         </Routes>
       </AuthProvider>

@@ -51,6 +51,30 @@ export const fetchCompareRepos = () => api.get('/compare-repos');
 export const fetchBeforeAfter = (repoName, params) =>
   api.get(`/before-after/${repoName}`, { params });
 
+// Category endpoints
+export const fetchCategories = (repo = null, dateFrom = null, dateTo = null) => {
+  const params = new URLSearchParams();
+  if (repo && repo !== 'all') params.append('repo', repo);
+  if (dateFrom) params.append('dateFrom', dateFrom);
+  if (dateTo) params.append('dateTo', dateTo);
+  const queryString = params.toString();
+  return api.get(`/categories${queryString ? '?' + queryString : ''}`);
+};
+
+export const fetchCategoryTrends = (months = 12, repo = null) => {
+  let url = `/category-trends?months=${months}`;
+  if (repo && repo !== 'all') url += `&repo=${repo}`;
+  return api.get(url);
+};
+
+export const fetchCategoryByRepo = (dateFrom = null, dateTo = null) => {
+  const params = new URLSearchParams();
+  if (dateFrom) params.append('dateFrom', dateFrom);
+  if (dateTo) params.append('dateTo', dateTo);
+  const queryString = params.toString();
+  return api.get(`/category-by-repo${queryString ? '?' + queryString : ''}`);
+};
+
 // Auth endpoints (proxied to backend by Vite in dev)
 export const checkAuth = () => axios.get('/auth/check', { withCredentials: true });
 export const logout = () => axios.post('/auth/logout', {}, { withCredentials: true });
