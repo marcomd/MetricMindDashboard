@@ -6,8 +6,23 @@ const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
-  }
+  },
+  withCredentials: true // Enable sending cookies with requests
 });
+
+// Response interceptor to handle 401 errors
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Redirect to login on authentication errors
+      if (!window.location.pathname.includes('/login')) {
+        window.location.href = '/login';
+      }
+    }
+    return Promise.reject(error);
+  }
+);
 
 // Repository endpoints
 export const fetchRepos = () => api.get('/repos');
@@ -35,5 +50,9 @@ export const fetchCompareRepos = () => api.get('/compare-repos');
 // Before/After analysis endpoint
 export const fetchBeforeAfter = (repoName, params) =>
   api.get(`/before-after/${repoName}`, { params });
+
+// Auth endpoints (proxied to backend by Vite in dev)
+export const checkAuth = () => axios.get('/auth/check', { withCredentials: true });
+export const logout = () => axios.post('/auth/logout', {}, { withCredentials: true });
 
 export default api;

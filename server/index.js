@@ -1,27 +1,36 @@
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import cookieParser from 'cookie-parser';
+import passport from './config/passport.js';
 import apiRoutes from './routes/api.js';
-
-dotenv.config();
+import authRoutes from './routes/auth.js';
+import { requireAuth } from './middleware/auth.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  credentials: true // Allow cookies
+}));
 app.use(express.json());
+app.use(cookieParser());
+app.use(passport.initialize());
 
-// API routes
-app.use('/api', apiRoutes);
+// Auth routes (public)
+app.use('/auth', authRoutes);
 
-// Health check
+// Health check (public)
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+
+// API routes (protected - requires authentication)
+app.use('/api', requireAuth, apiRoutes);
 
 // Serve static files from React build in production
 if (process.env.NODE_ENV === 'production') {

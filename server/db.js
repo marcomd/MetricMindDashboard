@@ -19,4 +19,55 @@ pool.on('error', (err) => {
   console.error('Database connection error:', err);
 });
 
+// User-related database queries
+
+/**
+ * Find user by Google ID
+ * @param {string} googleId - Google OAuth ID
+ * @returns {Object|null} User object or null if not found
+ */
+export async function findUserByGoogleId(googleId) {
+  try {
+    const result = await pool.query(
+      'SELECT id, google_id, email, name, domain, created_at, last_login FROM users WHERE google_id = $1',
+      [googleId]
+    );
+    return result.rows[0] || null;
+  } catch (err) {
+    console.error('Error finding user by Google ID:', err);
+    throw err;
+  }
+}
+
+/**
+ * Create or update user (upsert)
+ * @param {Object} userData - User data from Google OAuth
+ * @param {string} userData.googleId - Google OAuth ID
+ * @param {string} userData.email - User email
+ * @param {string} userData.name - User name
+ * @param {string} userData.domain - Email domain
+ * @returns {Object} User object
+ */
+export async function upsertUser(userData) {
+  try {
+    const { googleId, email, name, domain } = userData;
+    const result = await pool.query(
+      `INSERT INTO users (google_id, email, name, domain, last_login)
+       VALUES ($1, $2, $3, $4, NOW())
+       ON CONFLICT (google_id)
+       DO UPDATE SET
+         email = EXCLUDED.email,
+         name = EXCLUDED.name,
+         domain = EXCLUDED.domain,
+         last_login = NOW()
+       RETURNING id, google_id, email, name, domain, created_at, last_login`,
+      [googleId, email, name, domain]
+    );
+    return result.rows[0];
+  } catch (err) {
+    console.error('Error upserting user:', err);
+    throw err;
+  }
+}
+
 export default pool;
