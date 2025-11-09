@@ -4,6 +4,7 @@ import Overview from './pages/Overview';
 import Trends from './pages/Trends';
 import Contributors from './pages/Contributors';
 import Activity from './pages/Activity';
+import Comparison from './pages/Comparison';
 
 function App() {
   return (
@@ -14,6 +15,7 @@ function App() {
           <Route path="trends" element={<Trends />} />
           <Route path="contributors" element={<Contributors />} />
           <Route path="activity" element={<Activity />} />
+          <Route path="comparison" element={<Comparison />} />
         </Route>
       </Routes>
     </Router>

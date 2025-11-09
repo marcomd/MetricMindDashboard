@@ -124,7 +124,7 @@ The dashboard includes the following pages:
    - Search functionality
    - Adjustable contributor count (10/20/50/100)
 
-4. **Activity** (future)
+4. **Activity** (`/activity`)
   - **Purpose**: Track day-to-day commit patterns
   - **Key Components**:
     - Calendar heatmap showing commit activity (darker = more commits)
@@ -140,13 +140,37 @@ The dashboard includes the following pages:
      - Visual patterns reveal work habits
      - Interactive filtering and date range selection
 
-5. **Compare** (future)
-   - Side-by-side repository comparison
-   - Multi-series charts
+5. **Comparison** (future)
+  - **Purpose**: Compare repositories side-by-side
+  - **Key Components**:
+    - Side-by-side metrics cards for each repository
+    - Multi-series bar chart comparing key metrics
+    - Sortable table showing all comparison metrics
+    - Percentage indicators showing relative activity
+  - **User Experience**:
+    - Easy identification of most/least active projects
+    - Clear visual differentiation between repositories
+    - Insights into resource allocation and project health
 
 6. **Before/After Analysis** (future)
-   - Impact analysis with split views
-   - Compare time periods
+  - **Purpose**: Measure impact of changes (new tools, processes, team changes)
+    - **Key Components**:
+      - Repository selector
+      - Date range pickers for "Before" and "After" periods
+      - Split-screen comparison cards showing metrics side-by-side
+      - Percentage change indicators (↑ ↓) with color coding
+      - Visualization comparing the two periods
+    - **Metrics to Compare**:
+      - Average commits per month
+      - Average lines changed per commit
+      - Average contributors per month
+      - Total lines added/deleted
+  - **User Experience**:
+    - Clear visual separation of "before" vs "after"
+    - Prominent percentage changes (green for improvement, red for decline)
+    - Easy reconfiguration of time periods
+    - Shareable results (export or URL parameters)
+
 
 ### API Endpoints
 

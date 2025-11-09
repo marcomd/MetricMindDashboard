@@ -72,6 +72,12 @@ function Layout() {
                 >
                   Activity
                 </Link>
+                <Link
+                  to="/comparison"
+                  className={`nav-link ${isActive('/comparison') ? 'text-primary-600 dark:text-primary-400' : ''}`}
+                >
+                  Comparison
+                </Link>
               </nav>
 
               {/* Dark Mode Toggle */}
@@ -139,6 +145,13 @@ function Layout() {
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Activity
+                </Link>
+                <Link
+                  to="/comparison"
+                  className={`block py-2 px-4 rounded-lg ${isActive('/comparison') ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400' : 'text-gray-600 dark:text-gray-300'} hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-300`}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Comparison
                 </Link>
               </nav>
             )}
