@@ -29,7 +29,7 @@ pool.on('error', (err) => {
 export async function findUserByGoogleId(googleId) {
   try {
     const result = await pool.query(
-      'SELECT id, google_id, email, name, domain, created_at, last_login FROM users WHERE google_id = $1',
+      'SELECT id, google_id, email, name, domain, avatar_url, created_at, last_login FROM users WHERE google_id = $1',
       [googleId]
     );
     return result.rows[0] || null;
@@ -46,22 +46,25 @@ export async function findUserByGoogleId(googleId) {
  * @param {string} userData.email - User email
  * @param {string} userData.name - User name
  * @param {string} userData.domain - Email domain
+ * @param {string} userData.avatarUrl - User avatar URL from Google
  * @returns {Object} User object
  */
 export async function upsertUser(userData) {
   try {
-    const { googleId, email, name, domain } = userData;
+    const { googleId, email, name, domain, avatarUrl } = userData;
     const result = await pool.query(
-      `INSERT INTO users (google_id, email, name, domain, last_login)
-       VALUES ($1, $2, $3, $4, NOW())
+      `INSERT INTO users (google_id, email, name, domain, avatar_url, last_login)
+       VALUES ($1, $2, $3, $4, $5, NOW())
        ON CONFLICT (google_id)
        DO UPDATE SET
          email = EXCLUDED.email,
          name = EXCLUDED.name,
          domain = EXCLUDED.domain,
+         avatar_url = EXCLUDED.avatar_url,
+         updated_at = NOW(),
          last_login = NOW()
-       RETURNING id, google_id, email, name, domain, created_at, last_login`,
-      [googleId, email, name, domain]
+       RETURNING id, google_id, email, name, domain, avatar_url, created_at, last_login`,
+      [googleId, email, name, domain, avatarUrl]
     );
     return result.rows[0];
   } catch (err) {

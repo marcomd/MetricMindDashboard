@@ -84,7 +84,8 @@ router.get('/check', (req, res) => {
     user: {
       email: decoded.email,
       name: decoded.name,
-      domain: decoded.domain
+      domain: decoded.domain,
+      avatar_url: decoded.avatar_url
     }
   });
 });

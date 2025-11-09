@@ -5,7 +5,7 @@ const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
 
 /**
  * Generate a JWT token for a user
- * @param {Object} user - User object with id, email, name, domain
+ * @param {Object} user - User object with id, email, name, domain, avatar_url
  * @returns {string} JWT token
  */
 export const signToken = (user) => {
@@ -14,6 +14,7 @@ export const signToken = (user) => {
     email: user.email,
     name: user.name,
     domain: user.domain,
+    avatar_url: user.avatar_url || null,
   };
 
   return jwt.sign(payload, JWT_SECRET, {

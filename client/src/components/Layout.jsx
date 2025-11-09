@@ -1,6 +1,7 @@
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import Avatar from './Avatar';
 
 function Layout() {
   const [darkMode, setDarkMode] = useState(false);
@@ -92,8 +93,13 @@ function Layout() {
               {/* Right side controls */}
               <div className="flex items-center space-x-2">
                 {/* User Info & Logout (Desktop) */}
-                <div className="hidden md:flex items-center space-x-2">
-                  <div className="text-right mr-2">
+                <div className="hidden md:flex items-center space-x-3">
+                  <Avatar
+                    src={user?.avatar_url}
+                    name={user?.name}
+                    size="md"
+                  />
+                  <div className="text-right">
                     <p className="text-sm font-medium text-gray-900 dark:text-white">
                       {user?.name}
                     </p>
@@ -195,13 +201,20 @@ function Layout() {
 
                 {/* User info and logout for mobile */}
                 <div className="pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
-                  <div className="px-4 pb-2">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">
-                      {user?.name}
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {user?.email}
-                    </p>
+                  <div className="px-4 pb-2 flex items-center gap-3">
+                    <Avatar
+                      src={user?.avatar_url}
+                      name={user?.name}
+                      size="md"
+                    />
+                    <div>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">
+                        {user?.name}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {user?.email}
+                      </p>
+                    </div>
                   </div>
                   <button
                     onClick={logout}

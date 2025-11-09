@@ -47,12 +47,16 @@ passport.use(
           });
         }
 
+        // Extract avatar URL from Google profile
+        const avatarUrl = profile.photos?.[0]?.value || null;
+
         // Upsert user in database
         const user = await upsertUser({
           googleId: profile.id,
           email: email,
           name: profile.displayName,
           domain: domain,
+          avatarUrl: avatarUrl,
         });
 
         return done(null, user);
