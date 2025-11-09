@@ -61,6 +61,12 @@ function Layout() {
                   Trends
                 </Link>
                 <Link
+                  to="/before-after"
+                  className={`nav-link ${isActive('/before-after') ? 'text-primary-600 dark:text-primary-400' : ''}`}
+                >
+                  Before/After
+                </Link>
+                <Link
                   to="/contributors"
                   className={`nav-link ${isActive('/contributors') ? 'text-primary-600 dark:text-primary-400' : ''}`}
                 >
@@ -77,12 +83,6 @@ function Layout() {
                   className={`nav-link ${isActive('/comparison') ? 'text-primary-600 dark:text-primary-400' : ''}`}
                 >
                   Comparison
-                </Link>
-                <Link
-                  to="/before-after"
-                  className={`nav-link ${isActive('/before-after') ? 'text-primary-600 dark:text-primary-400' : ''}`}
-                >
-                  Before/After
                 </Link>
               </nav>
 

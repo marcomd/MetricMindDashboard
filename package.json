@@ -8,7 +8,15 @@
     "server": "nodemon server/index.js",
     "client": "cd client && npm run dev",
     "build": "cd client && npm run build",
-    "start": "node server/index.js"
+    "start": "node server/index.js",
+    "test": "cd client && npm run test",
+    "test:watch": "cd client && npm run test:watch",
+    "test:coverage": "cd client && npm run test:coverage",
+    "test:ui": "cd client && npm run test:ui",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:report": "playwright show-report"
   },
   "keywords": [
     "git",
@@ -19,6 +27,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@playwright/test": "^1.56.1",
     "@tailwindcss/postcss": "^4.1.17",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",

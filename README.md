@@ -308,6 +308,137 @@ Ports:
 - Backend API: 3000
 - Frontend Dev Server: 5173
 
+## Testing
+
+The project uses a comprehensive testing framework to ensure code quality and reliability:
+
+### Testing Stack
+
+- **Vitest**: Fast unit and integration testing for React components and utilities
+- **React Testing Library**: Component testing with user-centric queries
+- **Playwright**: End-to-end testing for complete user workflows
+- **Happy DOM**: Lightweight DOM implementation for fast test execution
+
+### Running Tests
+
+**Unit Tests (Vitest):**
+```bash
+# Run all unit tests
+npm run test
+
+# Run tests in watch mode (re-runs on file changes)
+npm run test:watch
+
+# Run tests with coverage report
+npm run test:coverage
+
+# Run tests in UI mode (interactive)
+npm run test:ui
+```
+
+**E2E Tests (Playwright):**
+```bash
+# IMPORTANT: Start dev server first in a separate terminal
+npm run dev
+
+# Then run E2E tests in another terminal
+npm run test:e2e
+
+# Run E2E tests in headed mode (see browser)
+npm run test:e2e:headed
+
+# Run E2E tests in UI mode (interactive debugger)
+npm run test:e2e:ui
+```
+
+**Note:** For detailed testing guide, examples, troubleshooting, and best practices, see [TESTING.md](./TESTING.md).
+
+### Test Structure
+
+Tests are organized alongside the code they test:
+
+```
+client/src/
+├── components/
+│   ├── StatCard.jsx
+│   └── StatCard.test.jsx          # Component tests
+├── utils/
+│   ├── dateFormat.js
+│   ├── dateFormat.test.js         # Utility tests
+│   └── api.test.js                # API client tests
+├── test/
+│   ├── setup.js                   # Test configuration
+│   └── testUtils.jsx              # Shared test utilities
+└── e2e/
+    ├── overview.spec.js           # E2E user workflow tests
+    ├── trends.spec.js
+    └── contributors.spec.js
+```
+
+### Writing Tests
+
+**Unit Tests Example:**
+
+```javascript
+import { describe, it, expect } from 'vitest';
+import { formatDate } from './dateFormat';
+
+describe('formatDate', () => {
+  it('should format Date object to dd/mm/yyyy', () => {
+    const date = new Date('2024-12-25');
+    expect(formatDate(date)).toBe('25/12/2024');
+  });
+});
+```
+
+**Component Tests Example:**
+
+```javascript
+import { describe, it, expect } from 'vitest';
+import { render, screen } from '@testing-library/react';
+import StatCard from './StatCard';
+
+describe('StatCard', () => {
+  it('should render title and value', () => {
+    render(<StatCard title="Total Commits" value={1234} icon="📊" />);
+    expect(screen.getByText('Total Commits')).toBeInTheDocument();
+  });
+});
+```
+
+**E2E Tests Example:**
+
+```javascript
+import { test, expect } from '@playwright/test';
+
+test('should navigate to trends page and filter data', async ({ page }) => {
+  await page.goto('http://localhost:5173');
+  await page.click('text=Trends');
+  await expect(page).toHaveURL(/.*trends/);
+  await page.selectOption('[data-testid="repo-selector"]', 'test-repo');
+  await expect(page.locator('.chart-container')).toBeVisible();
+});
+```
+
+### Test Coverage
+
+The testing suite covers:
+
+- **Utility Functions**: Date formatting, API client functions
+- **React Components**: StatCard, LoadingSpinner, Layout components
+- **User Workflows**: Navigation, filtering, data visualization interactions
+- **API Integration**: Mocked API responses and error handling
+- **Dark Mode**: localStorage persistence and theme switching
+
+Run `npm run test:coverage` to generate a detailed coverage report in `client/coverage/`.
+
+### Continuous Integration
+
+Tests run automatically on:
+- Pre-commit hooks (unit tests only)
+- Pull request creation/update (full test suite)
+- Main branch merges (full test suite + E2E)
+
 ### Future Enhancements
 
 - Real-time updates with WebSockets

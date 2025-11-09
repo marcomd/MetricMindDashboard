@@ -8,6 +8,7 @@
 export const formatDate = (date) => {
   if (!date) return '';
   const d = date instanceof Date ? date : new Date(date);
+  if (isNaN(d.getTime())) return '';
   const day = String(d.getDate()).padStart(2, '0');
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const year = d.getFullYear();
@@ -49,6 +50,7 @@ export const fromISOFormat = (isoStr) => {
 export const addMonths = (isoDateStr, months) => {
   if (!isoDateStr) return '';
   const date = new Date(isoDateStr);
+  if (isNaN(date.getTime())) return '';
   date.setMonth(date.getMonth() + months);
   return date.toISOString().split('T')[0];
 };
