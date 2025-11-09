@@ -66,6 +66,12 @@ function Layout() {
                 >
                   Contributors
                 </Link>
+                <Link
+                  to="/activity"
+                  className={`nav-link ${isActive('/activity') ? 'text-primary-600 dark:text-primary-400' : ''}`}
+                >
+                  Activity
+                </Link>
               </nav>
 
               {/* Dark Mode Toggle */}
@@ -126,6 +132,13 @@ function Layout() {
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Contributors
+                </Link>
+                <Link
+                  to="/activity"
+                  className={`block py-2 px-4 rounded-lg ${isActive('/activity') ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400' : 'text-gray-600 dark:text-gray-300'} hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-300`}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Activity
                 </Link>
               </nav>
             )}

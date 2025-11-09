@@ -3,6 +3,7 @@ import Layout from './components/Layout';
 import Overview from './pages/Overview';
 import Trends from './pages/Trends';
 import Contributors from './pages/Contributors';
+import Activity from './pages/Activity';
 
 function App() {
   return (
@@ -12,6 +13,7 @@ function App() {
           <Route index element={<Overview />} />
           <Route path="trends" element={<Trends />} />
           <Route path="contributors" element={<Contributors />} />
+          <Route path="activity" element={<Activity />} />
         </Route>
       </Routes>
     </Router>

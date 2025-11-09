@@ -125,8 +125,20 @@ The dashboard includes the following pages:
    - Adjustable contributor count (10/20/50/100)
 
 4. **Activity** (future)
-   - Daily activity heatmap
-   - Calendar-style visualization
+  - **Purpose**: Track day-to-day commit patterns
+  - **Key Components**:
+    - Calendar heatmap showing commit activity (darker = more commits)
+    - Timeline view showing recent commits
+    - Activity distribution charts (by day of week, hour of day)
+    - Repository filter to focus on specific projects
+  - **User Experience**:
+    - Quick identification of high/low activity periods
+    - Visual patterns reveal work habits
+    - Interactive filtering and date range selection
+   - **User Experience**:
+     - Quick identification of high/low activity periods
+     - Visual patterns reveal work habits
+     - Interactive filtering and date range selection
 
 5. **Compare** (future)
    - Side-by-side repository comparison
@@ -200,14 +212,24 @@ The backend exposes these RESTful endpoints:
   - Returns: Matrix showing commits for each category+work_type combination
   - Use case: "How many BILLING features vs BILLING bugfixes?"
 
-### Data Source
+### Database Views
 
-The API connects to the existing PostgreSQL database created by the data pipeline:
-- Leverages existing views and materialized views:
-  - `mv_monthly_stats_by_repo` - Pre-computed monthly statistics
-  - `v_contributor_stats` - Aggregated contributor data
-  - `v_daily_stats_by_repo` - Daily activity aggregations
-  - `v_commit_details` - Detailed commit information with repository joins
+Leverage existing views and materialized views:
+
+- `mv_monthly_stats_by_repo` - Pre-computed monthly statistics
+- `v_contributor_stats` - Aggregated contributor data
+- `v_daily_stats_by_repo` - Daily activity aggregations
+- `v_commit_details` - Detailed commit information with repository joins
+
+Categorization creates these views:
+
+- `v_category_stats` - Category statistics across all repos
+- `v_work_type_stats` - Work type statistics
+- `v_category_by_repo` - Category breakdown per repository (special tags in the title)
+- `v_work_type_by_repo` - Work type breakdown per repository based on branch name
+- `mv_monthly_category_stats` - Monthly category trends (materialized)
+- `v_category_work_type_matrix` - Category + work type combinations
+- `v_uncategorized_commits` - Commits needing categorization
 
 ### Design Specifications
 
