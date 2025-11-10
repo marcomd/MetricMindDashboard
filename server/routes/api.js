@@ -233,31 +233,62 @@ router.get('/compare-repos', async (req, res) => {
   }
 });
 
-// Before/After analysis for a repository
+// Before/After analysis for a repository or all repositories
 router.get('/before-after/:repoName', async (req, res) => {
   try {
     const { repoName } = req.params;
     const { beforeStart, beforeEnd, afterStart, afterEnd } = req.query;
 
-    const beforeResult = await pool.query(`
-      SELECT
-        AVG(avg_lines_changed_per_commit)::numeric as avg_lines_per_commit,
-        AVG(total_commits)::numeric as avg_commits_per_month,
-        AVG(unique_authors)::numeric as avg_authors
-      FROM mv_monthly_stats_by_repo
-      WHERE repository_name = $1
-        AND month_start_date BETWEEN $2 AND $3
-    `, [repoName, beforeStart, beforeEnd]);
+    // Different queries for 'all' repositories vs specific repository
+    const isAllRepos = repoName === 'all';
 
-    const afterResult = await pool.query(`
-      SELECT
-        AVG(avg_lines_changed_per_commit)::numeric as avg_lines_per_commit,
-        AVG(total_commits)::numeric as avg_commits_per_month,
-        AVG(unique_authors)::numeric as avg_authors
-      FROM mv_monthly_stats_by_repo
-      WHERE repository_name = $1
-        AND month_start_date BETWEEN $2 AND $3
-    `, [repoName, afterStart, afterEnd]);
+    let beforeResult, afterResult;
+
+    if (isAllRepos) {
+      // Aggregate across all repositories
+      beforeResult = await pool.query(`
+        SELECT
+          AVG(avg_lines_changed_per_commit)::numeric as avg_lines_per_commit,
+          AVG(total_commits)::numeric as avg_commits_per_month,
+          AVG(unique_authors)::numeric as avg_authors,
+          AVG(avg_commits_per_author)::numeric as avg_commits_per_committer
+        FROM mv_monthly_stats_by_repo
+        WHERE month_start_date BETWEEN $1 AND $2
+      `, [beforeStart, beforeEnd]);
+
+      afterResult = await pool.query(`
+        SELECT
+          AVG(avg_lines_changed_per_commit)::numeric as avg_lines_per_commit,
+          AVG(total_commits)::numeric as avg_commits_per_month,
+          AVG(unique_authors)::numeric as avg_authors,
+          AVG(avg_commits_per_author)::numeric as avg_commits_per_committer
+        FROM mv_monthly_stats_by_repo
+        WHERE month_start_date BETWEEN $1 AND $2
+      `, [afterStart, afterEnd]);
+    } else {
+      // Filter by specific repository
+      beforeResult = await pool.query(`
+        SELECT
+          AVG(avg_lines_changed_per_commit)::numeric as avg_lines_per_commit,
+          AVG(total_commits)::numeric as avg_commits_per_month,
+          AVG(unique_authors)::numeric as avg_authors,
+          AVG(avg_commits_per_author)::numeric as avg_commits_per_committer
+        FROM mv_monthly_stats_by_repo
+        WHERE repository_name = $1
+          AND month_start_date BETWEEN $2 AND $3
+      `, [repoName, beforeStart, beforeEnd]);
+
+      afterResult = await pool.query(`
+        SELECT
+          AVG(avg_lines_changed_per_commit)::numeric as avg_lines_per_commit,
+          AVG(total_commits)::numeric as avg_commits_per_month,
+          AVG(unique_authors)::numeric as avg_authors,
+          AVG(avg_commits_per_author)::numeric as avg_commits_per_committer
+        FROM mv_monthly_stats_by_repo
+        WHERE repository_name = $1
+          AND month_start_date BETWEEN $2 AND $3
+      `, [repoName, afterStart, afterEnd]);
+    }
 
     res.json({
       before: beforeResult.rows[0],

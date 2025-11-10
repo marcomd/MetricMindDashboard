@@ -159,6 +159,11 @@ const BeforeAfter = () => {
         Before: parseFloat(data.before?.avg_authors) || 0,
         After: parseFloat(data.after?.avg_authors) || 0,
       },
+      {
+        metric: 'Commits/Committer',
+        Before: parseFloat(data.before?.avg_commits_per_committer) || 0,
+        After: parseFloat(data.after?.avg_commits_per_committer) || 0,
+      },
     ];
   };
 
@@ -216,6 +221,7 @@ const BeforeAfter = () => {
             onChange={(e) => setSelectedRepo(e.target.value)}
             className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
           >
+            <option value="all">All Repositories</option>
             {repos.map(repo => (
               <option key={repo.name} value={repo.name}>
                 {repo.name}
@@ -366,7 +372,7 @@ const BeforeAfter = () => {
       {!loading && hasAnalyzed && data && (
         <>
           {/* Comparison Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {/* Average Commits per Month */}
             <div className="space-y-4">
               <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border-2 border-blue-200 dark:border-blue-800">
@@ -445,6 +451,33 @@ const BeforeAfter = () => {
                   {parseFloat(data.after?.avg_authors || 0).toFixed(1)}
                 </p>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">contributors</p>
+              </div>
+            </div>
+
+            {/* Commits per Committer */}
+            <div className="space-y-4">
+              <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border-2 border-blue-200 dark:border-blue-800">
+                <h4 className="text-sm font-medium text-blue-900 dark:text-blue-300 mb-2">Before</h4>
+                <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
+                  {parseFloat(data.before?.avg_commits_per_committer || 0).toFixed(1)}
+                </p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">commits/committer</p>
+              </div>
+              <div className="text-center py-2">
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gray-100 dark:bg-gray-800">
+                  <span className={`text-2xl font-bold ${getChangeColor(calculateChange(data.before?.avg_commits_per_committer, data.after?.avg_commits_per_committer))}`}>
+                    {getChangeArrow(calculateChange(data.before?.avg_commits_per_committer, data.after?.avg_commits_per_committer))}
+                    {Math.abs(calculateChange(data.before?.avg_commits_per_committer, data.after?.avg_commits_per_committer))}%
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">Commits per Committer</p>
+              </div>
+              <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border-2 border-purple-200 dark:border-purple-800">
+                <h4 className="text-sm font-medium text-purple-900 dark:text-purple-300 mb-2">After</h4>
+                <p className="text-3xl font-bold text-purple-600 dark:text-purple-400">
+                  {parseFloat(data.after?.avg_commits_per_committer || 0).toFixed(1)}
+                </p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">commits/committer</p>
               </div>
             </div>
           </div>

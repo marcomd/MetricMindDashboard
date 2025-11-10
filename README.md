@@ -70,6 +70,9 @@ The dashboard provides an intuitive, visually appealing interface to explore git
 - PostgreSQL database connection
 - RESTful API architecture
 - CORS enabled for cross-origin requests
+- Passport.js for Google OAuth2 authentication
+- JWT for stateless session management
+- Cookie-parser for secure httpOnly cookies
 
 **Frontend:**
 - React with Vite build tool
@@ -83,27 +86,52 @@ The dashboard provides an intuitive, visually appealing interface to explore git
 git-analytics-dashboard/
 ├── server/                    # Backend API
 │   ├── index.js              # Express server
-│   ├── db.js                 # PostgreSQL connection
+│   ├── db.js                 # PostgreSQL connection & user queries
+│   ├── config/
+│   │   ├── env.js            # Environment variables loader
+│   │   └── passport.js       # Passport Google OAuth2 strategy
+│   ├── middleware/
+│   │   └── auth.js           # Authentication middleware
+│   ├── utils/
+│   │   └── jwt.js            # JWT token utilities
 │   └── routes/
-│       └── api.js            # API endpoints
+│       ├── api.js            # API endpoints (protected)
+│       └── auth.js           # Authentication endpoints
 ├── client/                    # React frontend
 │   ├── src/
 │   │   ├── main.jsx          # Entry point
-│   │   ├── App.jsx           # Main app component
+│   │   ├── App.jsx           # Main app with AuthProvider
 │   │   ├── components/       # Reusable components
+│   │   │   ├── Avatar.jsx    # User avatar component
+│   │   │   ├── Layout.jsx    # Navigation with auth
+│   │   │   └── ProtectedRoute.jsx  # Route protection
+│   │   ├── contexts/
+│   │   │   └── AuthContext.jsx     # Auth state management
 │   │   ├── pages/            # Dashboard views
+│   │   │   ├── Login.jsx     # Google OAuth login page
+│   │   │   ├── Unauthorized.jsx   # Access denied page
+│   │   │   └── ...           # Dashboard pages
 │   │   ├── utils/            # Helper functions
+│   │   │   └── api.js        # API client with auth
 │   │   └── styles/           # CSS files
 │   ├── index.html
-│   ├── vite.config.js
+│   ├── vite.config.js        # Vite config with auth proxy
 │   └── package.json
 ├── package.json               # Root package.json
+├── .env                       # Environment variables
+├── CLAUDE.md                  # Detailed project documentation
 └── .replit                    # Replit configuration
 ```
 
 ### Dashboard Views
 
 The dashboard includes the following pages:
+
+**Public Pages:**
+- **Login** (`/login`) - Google OAuth2 authentication with company branding
+- **Unauthorized** (`/unauthorized`) - Access denied page for non-authorized email domains
+
+**Protected Pages** (require authentication):
 
 1. **Overview** (`/`)
    - Total repositories, commits, contributors stats with animated counters
@@ -155,7 +183,7 @@ The dashboard includes the following pages:
 6. **Before/After Analysis** (`/before-after`)
   - **Purpose**: Measure impact of changes (new tools, processes, team changes)
   - **Key Components**:
-    - Repository selector
+    - Repository selector (specific repository or "All Repositories" for global analysis)
     - Date range pickers for "Before" and "After" periods
     - Quick-action buttons (→ 3/6/12 months) to auto-set After period dates
     - Split-screen comparison cards showing metrics side-by-side
@@ -166,11 +194,13 @@ The dashboard includes the following pages:
     - Average commits per month
     - Average lines changed per commit
     - Average contributors per month
+    - Average commits per committer (productivity metric)
   - **User Experience**:
     - Clear visual separation of "before" vs "after"
     - Prominent percentage changes (green for improvement, red for decline)
     - Quick setup with preset time period buttons
     - Easy reconfiguration of time periods
+    - Global comparison across all repositories or focused analysis on specific repo
 
 7. **Content Analysis Page** (`content-analysis`)
   - **Purpose**: Understand **what** business domains developers are working on
@@ -218,6 +248,14 @@ The dashboard includes the following pages:
 
 The backend exposes these RESTful endpoints:
 
+#### Authentication (Public)
+- **GET /auth/google** - Initiates Google OAuth2 flow
+- **GET /auth/google/callback** - OAuth callback handler with domain validation
+- **GET /auth/check** - Check authentication status and return user info
+- **POST /auth/logout** - Logout user and clear JWT cookie
+
+**Note:** All `/api/*` endpoints below require authentication (valid JWT token in cookie).
+
 #### Repository Management
 - **GET /api/repos** - List all repositories with summary statistics
   - Returns: Repository ID, name, description, total commits, latest commit date, contributor count
@@ -248,8 +286,13 @@ The backend exposes these RESTful endpoints:
   - Fields: total commits, lines changed, months active, avg authors, avg lines per commit
 
 - **GET /api/before-after/:repoName** - Compare two time periods for impact analysis
+  - Param: `:repoName` - Repository name or "all" for aggregated analysis across all repositories
   - Query params: `beforeStart`, `beforeEnd`, `afterStart`, `afterEnd`
   - Returns: Average metrics for "before" and "after" periods
+    - `avg_commits_per_month` - Average commits per month
+    - `avg_lines_per_commit` - Average lines changed per commit
+    - `avg_authors` - Average contributors per month
+    - `avg_commits_per_committer` - Average commits per committer (productivity metric)
   - Use case: Measure impact of tools, processes, or team changes
 
 #### Content Analytics (Categories & Work Types)
@@ -278,11 +321,15 @@ The backend exposes these RESTful endpoints:
   - Returns: Matrix showing commits for each category+work_type combination
   - Use case: "How many BILLING features vs BILLING bugfixes?"
 
-### Database Views
+### Database Schema
 
-Leverage existing views and materialized views:
+**Core Tables:**
+- `repositories` - Repository information
+- `commits` - Individual commit records
+- `users` - Authenticated users (google_id, email, name, domain, avatar_url)
 
-- `mv_monthly_stats_by_repo` - Pre-computed monthly statistics
+**Analytics Views:**
+- `mv_monthly_stats_by_repo` - Pre-computed monthly statistics (materialized)
 - `v_contributor_stats` - Aggregated contributor data
 - `v_daily_stats_by_repo` - Daily activity aggregations
 - `v_commit_details` - Detailed commit information with repository joins
@@ -328,14 +375,49 @@ Categorization creates these views:
 - Top N selector for leaderboard
 - Dark mode toggle (persisted in localStorage)
 
+### Authentication
+
+**Google OAuth2 with Domain Restriction**
+
+The dashboard requires authentication via Google OAuth2. Only users with email addresses from authorized domains can access the application.
+
+**Features:**
+- Google OAuth2 single sign-on
+- Domain-based access control (@iubenda.com, @team.blue)
+- JWT token authentication with httpOnly cookies
+- User avatar display in header
+- Automatic session management (7-day expiry)
+- Secure logout functionality
+
+**Required OAuth Environment Variables:**
+- `GOOGLE_CLIENT_ID` - Google OAuth2 Client ID
+- `GOOGLE_CLIENT_SECRET` - Google OAuth2 Client Secret
+- `GOOGLE_CALLBACK_URL` - OAuth callback URL (e.g., http://localhost:3000/auth/google/callback)
+- `JWT_SECRET` - Secret key for JWT signing (use `openssl rand -base64 32` to generate)
+- `JWT_EXPIRES_IN` - JWT expiration time (default: 7d)
+- `ALLOWED_DOMAINS` - Comma-separated list of allowed email domains
+- `CLIENT_URL` - Frontend URL (default: http://localhost:5173)
+
+**Setup Instructions:**
+1. Create OAuth2 credentials in Google Cloud Console
+2. Enable Google+ API or People API
+3. Add authorized redirect URIs (development and production)
+4. Configure environment variables in `.env` file
+5. Create `users` table in PostgreSQL database (see CLAUDE.md for schema)
+
+For detailed authentication documentation, see [CLAUDE.md](./CLAUDE.md).
+
 ### Environment Requirements
 
-Required environment variables:
+**Database Configuration:**
 - `PGHOST` - PostgreSQL host
 - `PGPORT` - PostgreSQL port (default: 5432)
 - `PGDATABASE` - Database name (default: git_analytics)
 - `PGUSER` - Database user
 - `PGPASSWORD` - Database password
+
+**Server Configuration:**
+- `PORT` - Backend server port (default: 3000)
 - `NODE_ENV` - Environment (development/production)
 
 ### Deployment
@@ -484,11 +566,12 @@ Tests run automatically on:
 
 - Real-time updates with WebSockets
 - Export functionality (PDF, CSV)
-- Advanced filtering and date range selectors
-- User authentication and authorization
 - URL parameter sharing for Before/After analysis results
-- Category and work type analytics pages
 - Custom date range presets
+- Multi-factor authentication (MFA) support
+- Role-based access control (RBAC)
+- Notification system for milestone achievements
+- Improve commit classification using AI 
 
 ## Roadmap
 
