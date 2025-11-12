@@ -75,6 +75,16 @@ export const fetchCategoryByRepo = (dateFrom = null, dateTo = null) => {
   return api.get(`/category-by-repo${queryString ? '?' + queryString : ''}`);
 };
 
+// Summary report endpoint
+export const fetchSummary = (repo = null, dateFrom = null, dateTo = null) => {
+  const params = new URLSearchParams();
+  if (repo && repo !== 'all') params.append('repo', repo);
+  if (dateFrom) params.append('dateFrom', dateFrom);
+  if (dateTo) params.append('dateTo', dateTo);
+  const queryString = params.toString();
+  return api.get(`/summary${queryString ? '?' + queryString : ''}`);
+};
+
 // Auth endpoints (proxied to backend by Vite in dev)
 export const checkAuth = () => axios.get('/auth/check', { withCredentials: true });
 export const logout = () => axios.post('/auth/logout', {}, { withCredentials: true });

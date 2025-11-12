@@ -487,4 +487,114 @@ router.get('/category-by-repo', async (req, res) => {
   }
 });
 
+// Get summary report with overall stats, largest commits, and top contributors
+router.get('/summary', async (req, res) => {
+  try {
+    const repo = req.query.repo;
+    const dateFrom = req.query.dateFrom;
+    const dateTo = req.query.dateTo;
+
+    const hasRepoFilter = repo && repo !== 'all';
+    const hasDateFilter = dateFrom || dateTo;
+
+    // Build WHERE conditions
+    const conditions = [];
+    const params = [];
+    let paramIndex = 1;
+
+    let baseQuery = 'FROM commits c';
+
+    if (hasRepoFilter) {
+      baseQuery += ' JOIN repositories r ON c.repository_id = r.id';
+      conditions.push(`r.name = $${paramIndex}`);
+      params.push(repo);
+      paramIndex++;
+    }
+
+    if (dateFrom) {
+      conditions.push(`c.commit_date >= $${paramIndex}`);
+      params.push(dateFrom);
+      paramIndex++;
+    }
+
+    if (dateTo) {
+      conditions.push(`c.commit_date <= $${paramIndex}`);
+      params.push(dateTo);
+      paramIndex++;
+    }
+
+    const whereClause = conditions.length > 0 ? ' WHERE ' + conditions.join(' AND ') : '';
+
+    // 1. Overall Statistics
+    const statsQuery = `
+      SELECT
+        COUNT(c.id)::int as total_commits,
+        COALESCE(SUM(c.lines_added), 0)::bigint as total_lines_added,
+        COALESCE(SUM(c.lines_deleted), 0)::bigint as total_lines_deleted,
+        COALESCE(SUM(c.lines_added + c.lines_deleted), 0)::bigint as total_lines_changed,
+        COALESCE(ROUND(AVG(c.lines_added + c.lines_deleted)::numeric, 1), 0) as avg_lines_changed_per_commit,
+        COALESCE(ROUND(AVG(c.lines_added)::numeric, 1), 0) as avg_lines_added_per_commit,
+        COALESCE(ROUND(AVG(c.lines_deleted)::numeric, 1), 0) as avg_lines_deleted_per_commit
+      ${baseQuery}
+      ${whereClause}
+    `;
+
+    // 2. Top 10 Largest Commits
+    const largestCommitsQuery = `
+      SELECT
+        c.commit_date,
+        c.hash as commit_hash,
+        c.subject as commit_message,
+        c.author_name,
+        ${hasRepoFilter ? 'r.name' : '(SELECT name FROM repositories WHERE id = c.repository_id)'} as repository_name,
+        (c.lines_added + c.lines_deleted) as lines_changed,
+        c.lines_added,
+        c.lines_deleted
+      ${baseQuery}
+      ${whereClause}
+      ORDER BY lines_changed DESC
+      LIMIT 10
+    `;
+
+    // 3. Top 10 Contributors
+    const topContributorsQuery = `
+      WITH normalized_commits AS (
+        SELECT
+          c.*,
+          LOWER(TRIM(c.author_name)) as normalized_name,
+          LOWER(TRIM(c.author_email)) as normalized_email
+        ${baseQuery}
+        ${whereClause}
+      )
+      SELECT
+        MAX(author_name) as author_name,
+        MAX(author_email) as author_email,
+        COUNT(id)::int as total_commits,
+        COUNT(DISTINCT repository_id)::int as repositories_contributed,
+        SUM(lines_added + lines_deleted)::bigint as total_lines_changed,
+        ROUND(AVG(lines_added + lines_deleted)::numeric, 1) as avg_lines_changed_per_commit
+      FROM normalized_commits
+      GROUP BY normalized_name
+      ORDER BY total_commits DESC
+      LIMIT 10
+    `;
+
+    // Execute all queries
+    const [statsResult, largestCommitsResult, topContributorsResult] = await Promise.all([
+      pool.query(statsQuery, params),
+      pool.query(largestCommitsQuery, params),
+      pool.query(topContributorsQuery, params)
+    ]);
+
+    res.json({
+      overall_stats: statsResult.rows[0],
+      largest_commits: largestCommitsResult.rows,
+      top_contributors: topContributorsResult.rows
+    });
+  } catch (err) {
+    console.error('Error fetching summary:', err);
+    res.status(500).json({ error: 'Failed to fetch summary' });
+  }
+});
+
 export default router;
