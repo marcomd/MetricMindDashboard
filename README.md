@@ -134,9 +134,20 @@ The dashboard includes the following pages:
 **Protected Pages** (require authentication):
 
 1. **Overview** (`/`)
-   - Total repositories, commits, contributors stats with animated counters
-   - Repository cards with details
-   - Comparison bar chart with gradient colors
+   - Repository cards displaying all repositories with commit count, contributors, and latest commit date
+   - Advanced filtering controls:
+     - Repository selector (all or specific repository)
+     - Date range selectors (from/to month)
+     - Dynamic period display
+   - Overall statistics cards with animated counters (7 key metrics):
+     - Total commits, lines added, lines deleted, lines changed
+     - Average lines changed/added/deleted per commit
+   - Top 10 Largest Commits section:
+     - Bar chart visualization showing lines changed per commit
+     - Detailed table with commit date, hash, message, author, and repository
+   - Top 10 Contributors section:
+     - Horizontal bar chart showing commit counts by contributor
+     - Detailed table with contributor stats including repos contributed and average lines per commit
 
 2. **Trends** (`/trends`)
    - Monthly commit trends with smooth area charts
