@@ -2,6 +2,8 @@
 
 An AI-driven developer productivity analytics system that extracts, stores, and visualizes git commit data from multiple repositories to measure the impact of development tools and practices.
 
+![Cover](docs/cover.png)
+
 ## Overview
 
 This system provides comprehensive analytics to answer questions like:
