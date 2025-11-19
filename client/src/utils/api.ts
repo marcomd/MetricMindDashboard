@@ -34,6 +34,16 @@ export const fetchGlobalMonthlyTrends = (limit: number = 12): Promise<AxiosRespo
 export const fetchMonthlyTrends = (repoName: string, limit: number = 12): Promise<AxiosResponse> =>
   api.get(`/monthly-trends/${repoName}?limit=${limit}`);
 
+export const fetchMonthlyCommits = (
+  yearMonth: string,
+  limit: number = 10,
+  repo: string | null = null
+): Promise<AxiosResponse> => {
+  let url = `/monthly-commits/${yearMonth}?limit=${limit}`;
+  if (repo && repo !== 'all') url += `&repo=${repo}`;
+  return api.get(url);
+};
+
 // Contributors endpoints
 export const fetchContributors = (
   limit: number = 20,

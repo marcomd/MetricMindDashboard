@@ -157,6 +157,14 @@ The dashboard includes the following pages:
    - Repository selector filter
    - Time range selector (3, 6, 12, 24 months)
    - Average metrics cards
+   - **Interactive month selection** - Click on any month in the charts to view top 10 commits for that month
+   - **Collapsible commit details panel** - Shows commit details including date, lines changed/added/deleted, message, hash, author, and repository
+     - Hidden by default for full-width charts
+     - Slides in from the right when a month is clicked
+     - Close button (X icon) to hide panel and return to full-width view
+     - Helper text below first chart guides users to click on a month
+   - **Responsive layout** - Side panel on desktop (right), stacked below charts on mobile
+   - **Real-time filtering** - Commit details automatically update when repository filter changes
 
 3. **Contributors** (`/contributors`)
    - Top 3 podium visualization with medals
@@ -282,6 +290,13 @@ The backend exposes these RESTful endpoints:
   - Returns: Monthly statistics for the specified repository
   - Fields: month, commits, lines added/deleted, authors, averages per author
 
+- **GET /api/monthly-commits/:year_month** - Top commits for a specific month
+  - Param: `:year_month` - Month in YYYY-MM format (e.g., 2024-01)
+  - Query params: `repo` (optional, filters by repository), `limit` (default: 10)
+  - Returns: Top N commits for the specified month sorted by lines changed
+  - Fields: commit_date, commit_hash, commit_message, author_name, repository_name, lines_changed, lines_added, lines_deleted
+  - Use case: Display detailed commit information when users click on a month in charts
+
 #### Contributors
 - **GET /api/contributors** - Top contributors across all repositories
   - Query params: `limit` (default: 20)
@@ -365,6 +380,13 @@ Categorization creates these views:
 - Soft shadows and refined spacing
 - Responsive mobile layout with hamburger menu
 - Custom styled scrollbars
+
+**Icon Library:**
+- **lucide-react** - Consistent, scalable, and accessible iconography
+- Modern SVG icons with built-in support for size and color customization
+- Used throughout the application for navigation, actions, and visual indicators
+- Installation: `npm install lucide-react`
+- Import example: `import { TrendingUp, Users, Code } from 'lucide-react'`
 
 **Color Palette:**
 - **Primary Blue**: `#3b82f6` (buttons, accents)

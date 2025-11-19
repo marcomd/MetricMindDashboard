@@ -487,6 +487,74 @@ router.get('/category-by-repo', async (req: Request, res: Response) => {
   }
 });
 
+// Get top commits for a specific month
+router.get('/monthly-commits/:year_month', async (req: Request, res: Response) => {
+  try {
+    const { year_month } = req.params;
+    const repo = req.query.repo as string | undefined;
+    const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+
+    // Validate year_month format (YYYY-MM)
+    const yearMonthRegex = /^\d{4}-\d{2}$/;
+    if (!yearMonthRegex.test(year_month)) {
+      return res.status(400).json({ error: 'Invalid year_month format. Expected YYYY-MM' });
+    }
+
+    // Extract year and month
+    const [year, month] = year_month.split('-');
+    const monthNum = parseInt(month);
+
+    // Validate month is between 01-12
+    if (monthNum < 1 || monthNum > 12) {
+      return res.status(400).json({ error: 'Invalid month. Must be between 01 and 12' });
+    }
+
+    // Calculate start and end dates for the month
+    const startDate = `${year}-${month}-01`;
+    const lastDay = new Date(parseInt(year), monthNum, 0).getDate(); // Get last day of month
+    const endDate = `${year}-${month}-${lastDay.toString().padStart(2, '0')}`;
+
+    // Build query
+    const hasRepoFilter = repo && repo !== 'all';
+    let query = `
+      SELECT
+        c.commit_date,
+        c.hash as commit_hash,
+        c.subject as commit_message,
+        c.author_name,
+        ${hasRepoFilter ? 'r.name' : '(SELECT name FROM repositories WHERE id = c.repository_id)'} as repository_name,
+        (c.lines_added + c.lines_deleted) as lines_changed,
+        c.lines_added,
+        c.lines_deleted
+      FROM commits c
+    `;
+
+    const conditions: string[] = [`c.commit_date >= $1`, `c.commit_date <= $2`];
+    const params: any[] = [startDate, endDate];
+    let paramIndex = 3;
+
+    if (hasRepoFilter) {
+      query += ` JOIN repositories r ON c.repository_id = r.id `;
+      conditions.push(`r.name = $${paramIndex}`);
+      params.push(repo);
+      paramIndex++;
+    }
+
+    query += ' WHERE ' + conditions.join(' AND ');
+    query += `
+      ORDER BY lines_changed DESC
+      LIMIT $${paramIndex}
+    `;
+    params.push(limit);
+
+    const result = await pool.query(query, params);
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error fetching monthly commits:', err);
+    res.status(500).json({ error: 'Failed to fetch monthly commits' });
+  }
+});
+
 // Get summary report with overall stats, largest commits, and top contributors
 router.get('/summary', async (req: Request, res: Response) => {
   try {

@@ -9,9 +9,13 @@
     "client": "cd client && npm run dev",
     "build": "cd client && npm run build",
     "start": "tsx server/index.ts",
-    "test": "cd client && npm run test",
+    "test": "npm run test:server && cd client && npm run test",
+    "test:server": "vitest run --config server/vitest.config.ts",
+    "test:server:watch": "vitest --config server/vitest.config.ts",
+    "test:client": "cd client && npm run test",
     "test:watch": "cd client && npm run test:watch",
-    "test:coverage": "cd client && npm run test:coverage",
+    "test:coverage": "npm run test:server:coverage && cd client && npm run test:coverage",
+    "test:server:coverage": "vitest run --coverage --config server/vitest.config.ts",
     "test:ui": "cd client && npm run test:ui",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
@@ -46,9 +50,12 @@
     "@types/node": "^24.10.1",
     "@types/passport": "^1.0.17",
     "@types/passport-google-oauth20": "^2.0.17",
+    "@types/supertest": "^6.0.3",
     "concurrently": "^8.2.2",
     "nodemon": "^3.0.1",
+    "supertest": "^7.1.4",
     "tsx": "^4.20.6",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.10"
   }
 }

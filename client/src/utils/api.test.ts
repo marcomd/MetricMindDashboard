@@ -27,6 +27,7 @@ import {
   fetchRepos,
   fetchGlobalMonthlyTrends,
   fetchMonthlyTrends,
+  fetchMonthlyCommits,
   fetchContributors,
   fetchContributorsDateRange,
   fetchDailyActivity,
@@ -92,6 +93,74 @@ describe('API utilities', () => {
       await fetchMonthlyTrends('test-repo', 12);
 
       expect(mockGet).toHaveBeenCalledWith('/monthly-trends/test-repo?limit=12');
+    });
+  });
+
+  describe('fetchMonthlyCommits', () => {
+    it('should fetch monthly commits with default parameters', async () => {
+      const mockData: MockResponse = { data: [] };
+      mockGet.mockResolvedValue(mockData);
+
+      await fetchMonthlyCommits('2024-01');
+
+      expect(mockGet).toHaveBeenCalledWith('/monthly-commits/2024-01?limit=10');
+    });
+
+    it('should fetch monthly commits with custom limit', async () => {
+      const mockData: MockResponse = { data: [] };
+      mockGet.mockResolvedValue(mockData);
+
+      await fetchMonthlyCommits('2024-01', 20);
+
+      expect(mockGet).toHaveBeenCalledWith('/monthly-commits/2024-01?limit=20');
+    });
+
+    it('should fetch monthly commits filtered by repository', async () => {
+      const mockData: MockResponse = { data: [] };
+      mockGet.mockResolvedValue(mockData);
+
+      await fetchMonthlyCommits('2024-01', 10, 'test-repo');
+
+      expect(mockGet).toHaveBeenCalledWith('/monthly-commits/2024-01?limit=10&repo=test-repo');
+    });
+
+    it('should not add repo filter when repo is "all"', async () => {
+      const mockData: MockResponse = { data: [] };
+      mockGet.mockResolvedValue(mockData);
+
+      await fetchMonthlyCommits('2024-01', 10, 'all');
+
+      expect(mockGet).toHaveBeenCalledWith('/monthly-commits/2024-01?limit=10');
+    });
+
+    it('should fetch monthly commits with all parameters', async () => {
+      const mockData: MockResponse = { data: [] };
+      mockGet.mockResolvedValue(mockData);
+
+      await fetchMonthlyCommits('2024-12', 50, 'my-repo');
+
+      expect(mockGet).toHaveBeenCalledWith('/monthly-commits/2024-12?limit=50&repo=my-repo');
+    });
+
+    it('should return the correct response data', async () => {
+      const mockCommits = [
+        {
+          commit_hash: 'abc1234',
+          commit_date: '2024-01-15',
+          commit_message: 'Test commit',
+          author_name: 'John Doe',
+          repository_name: 'test-repo',
+          lines_changed: 100,
+          lines_added: 70,
+          lines_deleted: 30,
+        },
+      ];
+      const mockData: MockResponse = { data: mockCommits };
+      mockGet.mockResolvedValue(mockData);
+
+      const result = await fetchMonthlyCommits('2024-01');
+
+      expect(result.data).toEqual(mockCommits);
     });
   });
 
