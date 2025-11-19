@@ -597,6 +597,59 @@ Tests run automatically on:
 - Pull request creation/update (full test suite)
 - Main branch merges (full test suite + E2E)
 
+## Version Management
+
+The dashboard follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html) (MAJOR.MINOR.PATCH):
+- **MAJOR**: Breaking changes or significant architectural updates
+- **MINOR**: New features or significant enhancements
+- **PATCH**: Bug fixes and minor improvements
+
+**Current Version:** `1.0.0` (displayed in footer on all pages)
+
+### How to Update the Version
+
+1. **Update version in `package.json`:**
+   ```bash
+   npm version patch   # For bug fixes (1.0.0 → 1.0.1)
+   npm version minor   # For new features (1.0.0 → 1.1.0)
+   npm version major   # For breaking changes (1.0.0 → 2.0.0)
+   ```
+
+2. **Update `CHANGELOG.md`:**
+   - Add a new section at the top with the new version number and date
+   - Document changes under appropriate categories:
+     - **Added**: New features
+     - **Changed**: Changes to existing functionality
+     - **Fixed**: Bug fixes
+     - **Removed**: Removed features
+
+3. **Commit the changes:**
+   ```bash
+   git add package.json CHANGELOG.md
+   git commit -m "v1.0.1 Release notes here"
+   git tag v1.0.1
+   git push && git push --tags
+   ```
+
+4. **Version automatically appears in UI:**
+   - The version is injected at build time via Vite
+   - No additional code changes needed
+   - Users will see the new version in the footer after deployment
+
+**Example CHANGELOG Entry:**
+```markdown
+## [1.0.1] - 2025-11-19
+
+### Fixed
+- Fixed date picker bug in Before/After analysis
+- Resolved dark mode inconsistency on Contributors page
+
+### Changed
+- Improved chart loading performance on Trends page
+```
+
+For full version history, see [CHANGELOG.md](./CHANGELOG.md).
+
 ### Future Enhancements
 
 - Real-time updates with WebSockets

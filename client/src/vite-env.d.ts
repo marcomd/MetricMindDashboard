@@ -1,6 +1,8 @@
 /// <reference types="vite/client" />
 
 declare global {
+  const __APP_VERSION__: string;
+
   namespace JSX {
     interface Element extends React.ReactElement<any, any> { }
     interface ElementClass extends React.Component<any> {
