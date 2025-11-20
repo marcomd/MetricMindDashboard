@@ -26,7 +26,7 @@ export default defineConfig({
         changeOrigin: true,
       }
     },
-    allowedHosts: ['localhost']
+    allowedHosts: ['localhost', '6161213a-6d10-461b-8d78-dca94f437e62-00-24rktapc6h2yq.riker.replit.dev', 'metric-mind.replit.app']
   },
   test: {
     globals: true,
