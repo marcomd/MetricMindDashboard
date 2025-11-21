@@ -3,7 +3,7 @@ import { Scale } from 'lucide-react';
 import { fetchCompareRepos } from '../utils/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import StatCard from '../components/StatCard';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
 import CountUp from 'react-countup';
 
 interface RepoComparisonData {
@@ -263,6 +263,85 @@ const Comparison = (): JSX.Element => {
           </BarChart>
         </ResponsiveContainer>
       </div>
+
+      {/* Repository Weight Efficiency */}
+      {(() => {
+        const repoEfficiencyData = sortedData
+          .map(repo => ({
+            repository: repo.repository_name,
+            efficiency: parseFloat(String(repo.weight_efficiency_pct || 100)),
+            total_commits: parseInt(repo.total_commits),
+            effective_commits: repo.effective_commits
+              ? parseFloat(String(repo.effective_commits))
+              : parseInt(repo.total_commits)
+          }))
+          .filter(r => r.efficiency < 100)
+          .sort((a, b) => a.efficiency - b.efficiency);
+
+        return repoEfficiencyData.length > 0 && (
+          <div className="card p-6">
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
+              Repository Weight Efficiency
+            </h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={repoEfficiencyData} layout="horizontal">
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <XAxis
+                  dataKey="efficiency"
+                  type="number"
+                  domain={[0, 100]}
+                  stroke="#6b7280"
+                  tick={{ fill: '#6b7280' }}
+                  label={{ value: 'Weight Efficiency (%)', position: 'insideBottom', offset: -5 }}
+                />
+                <YAxis
+                  dataKey="repository"
+                  type="category"
+                  width={150}
+                  stroke="#6b7280"
+                  tick={{ fill: '#6b7280', fontSize: 12 }}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                    border: 'none',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                  }}
+                  content={({ payload }) => {
+                    if (!payload || !payload[0]) return null;
+                    const data = payload[0].payload as any;
+                    return (
+                      <div className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+                        <div className="font-semibold text-gray-900 dark:text-white mb-1">
+                          {data.repository}
+                        </div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400">
+                          <div>Efficiency: {data.efficiency.toFixed(1)}%</div>
+                          <div>Total: {data.total_commits.toLocaleString()} commits</div>
+                          <div>Effective: {data.effective_commits.toFixed(1)}</div>
+                        </div>
+                      </div>
+                    );
+                  }}
+                />
+                <Bar dataKey="efficiency" animationDuration={1000}>
+                  {repoEfficiencyData.map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={
+                        entry.efficiency >= 75 ? '#eab308' :
+                        entry.efficiency >= 50 ? '#f97316' :
+                        '#ef4444'
+                      }
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        );
+      })()}
 
       {/* Detailed Comparison Table */}
       <div className="card p-6">

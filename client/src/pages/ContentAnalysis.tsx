@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Scale } from 'lucide-react';
 import { fetchRepos, fetchCategories, fetchCategoryTrends, fetchCategoryByRepo } from '../utils/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import StatCard from '../components/StatCard';
@@ -96,6 +97,7 @@ const ContentAnalysis = (): JSX.Element => {
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
   const [categoryData, setCategoryData] = useState<CategoryData[]>([]);
+  const [fullCategoryData, setFullCategoryData] = useState<CategoryData[]>([]); // For de-prioritized categories
   const [trendData, setTrendData] = useState<TrendData[]>([]);
   const [repoMatrixData, setRepoMatrixData] = useState<RepoMatrixData[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -103,6 +105,7 @@ const ContentAnalysis = (): JSX.Element => {
   const [monthsToShow, setMonthsToShow] = useState<number>(12);
   const [showMetric, setShowMetric] = useState<'commits' | 'loc'>('commits');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [useWeightedData, setUseWeightedData] = useState<boolean>(true);
 
   // Category colors - consistent across all charts
   const categoryColors: Record<string, string> = {
@@ -123,7 +126,7 @@ const ContentAnalysis = (): JSX.Element => {
     return categoryColors[category] || `hsl(${index * 40}, 70%, 50%)`;
   };
 
-  // Set default date range (last 3 months)
+  // Set default date range (previous month)
   useEffect(() => {
     const formatLocalDate = (date: Date): string => {
       const year = date.getFullYear();
@@ -133,10 +136,15 @@ const ContentAnalysis = (): JSX.Element => {
     };
 
     const today = new Date();
-    const threeMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 3, today.getDate());
 
-    setDateFrom(formatLocalDate(threeMonthsAgo));
-    setDateTo(formatLocalDate(today));
+    // First day of previous month
+    const firstDayPrevMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+
+    // Last day of previous month (day 0 of current month = last day of previous month)
+    const lastDayPrevMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+
+    setDateFrom(formatLocalDate(firstDayPrevMonth));
+    setDateTo(formatLocalDate(lastDayPrevMonth));
   }, []);
 
   // Load repositories on mount
@@ -163,10 +171,12 @@ const ContentAnalysis = (): JSX.Element => {
       fetchCategoryByRepo(dateFrom, dateTo)
     ])
       .then(([categoriesRes, trendsRes, repoMatrixRes]) => {
-        // Filter out UNCATEGORIZED and limit to top 15 categories
-        const filteredCategories = categoriesRes.data
-          .filter((c: CategoryData) => c.category !== 'UNCATEGORIZED')
-          .slice(0, 15);
+        // Filter out UNCATEGORIZED
+        const allCategories = categoriesRes.data
+          .filter((c: CategoryData) => c.category !== 'UNCATEGORIZED');
+
+        // Limit to top 15 categories for charts
+        const filteredCategories = allCategories.slice(0, 15);
 
         // Get the top 15 category names for filtering other datasets
         const top15CategoryNames = filteredCategories.map((c: CategoryData) => c.category);
@@ -182,6 +192,7 @@ const ContentAnalysis = (): JSX.Element => {
         );
 
         setCategoryData(filteredCategories);
+        setFullCategoryData(allCategories); // Store full data for de-prioritized section
         setTrendData(filteredTrends);
         setRepoMatrixData(filteredRepoMatrix);
         setDataLoading(false);
@@ -210,12 +221,20 @@ const ContentAnalysis = (): JSX.Element => {
 
   // Calculate stats for StatCards (categoryData is already filtered)
   const totalCategories = categoryData.length;
-  const totalCommits = categoryData.reduce((sum, c) => sum + parseInt(c.total_commits || '0'), 0);
+  const totalCommits = categoryData.reduce((sum, c) => {
+    if (useWeightedData && c.effective_commits) {
+      return sum + parseFloat(String(c.effective_commits));
+    }
+    return sum + parseInt(c.total_commits || '0');
+  }, 0);
   const topCategory = categoryData.length > 0 ? categoryData[0] : null;
   const mostActiveRepo = repoMatrixData.length > 0
     ? repoMatrixData.reduce((acc: Record<string, number>, curr) => {
         const repoTotal = acc[curr.repository] || 0;
-        acc[curr.repository] = repoTotal + parseInt(curr.total_commits || '0');
+        const commits = useWeightedData && curr.effective_commits
+          ? parseFloat(String(curr.effective_commits))
+          : parseInt(curr.total_commits || '0');
+        acc[curr.repository] = repoTotal + commits;
         return acc;
       }, {})
     : {};
@@ -226,14 +245,18 @@ const ContentAnalysis = (): JSX.Element => {
   // Prepare donut chart data
   const donutData: DonutDataPoint[] = categoryData.map(item => ({
     name: item.category,
-    value: parseInt(item.total_commits || '0'),
+    value: useWeightedData && item.effective_commits
+      ? parseFloat(String(item.effective_commits))
+      : parseInt(item.total_commits || '0'),
     loc: parseInt(item.total_lines_changed || '0')
   }));
 
   // Prepare comparison bar chart data
   const comparisonData: ComparisonDataPoint[] = categoryData.map(item => ({
     category: item.category,
-    commits: parseInt(item.total_commits || '0'),
+    commits: useWeightedData && item.effective_commits
+      ? parseFloat(String(item.effective_commits))
+      : parseInt(item.total_commits || '0'),
     loc: parseInt(item.total_lines_changed || '0'),
     authors: parseInt(item.unique_authors || '0')
   }));
@@ -249,9 +272,14 @@ const ContentAnalysis = (): JSX.Element => {
       if (!monthlyData[month]) {
         monthlyData[month] = { month, month_date: item.month_start_date };
       }
-      monthlyData[month][item.category] = parseInt(showMetric === 'commits'
-        ? item.total_commits
-        : item.total_lines_changed || '0');
+
+      if (showMetric === 'commits') {
+        monthlyData[month][item.category] = useWeightedData && item.effective_commits
+          ? parseFloat(String(item.effective_commits))
+          : parseInt(item.total_commits || '0');
+      } else {
+        monthlyData[month][item.category] = parseInt(item.total_lines_changed || '0');
+      }
     });
 
     // Convert to array and sort by date (newest first, but we'll reverse for display)
@@ -278,9 +306,15 @@ const ContentAnalysis = (): JSX.Element => {
       if (!repoGroups[repo]) {
         repoGroups[repo] = { repository: repo };
       }
-      const value = showMetric === 'commits'
-        ? parseInt(item.total_commits || '0')
-        : parseInt(item.total_lines_changed || '0');
+
+      let value: number;
+      if (showMetric === 'commits') {
+        value = useWeightedData && item.effective_commits
+          ? parseFloat(String(item.effective_commits))
+          : parseInt(item.total_commits || '0');
+      } else {
+        value = parseInt(item.total_lines_changed || '0');
+      }
       repoGroups[repo][item.category] = value;
     });
 
@@ -422,6 +456,18 @@ const ContentAnalysis = (): JSX.Element => {
               Year
             </button>
           </div>
+
+          {/* Use Weighted Data Checkbox */}
+          <label className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-300">
+            <input
+              type="checkbox"
+              checked={useWeightedData}
+              onChange={(e) => setUseWeightedData(e.target.checked)}
+              className="w-4 h-4 text-primary-600 bg-gray-100 border-gray-300 rounded focus:ring-primary-500 focus:ring-2"
+            />
+            <Scale className="w-4 h-4" />
+            <span className="text-sm font-medium whitespace-nowrap">Use Weighted Data</span>
+          </label>
         </div>
       </div>
 
@@ -439,11 +485,15 @@ const ContentAnalysis = (): JSX.Element => {
             value={topCategory?.category || 'N/A'}
             icon="🏆"
             color="purple"
-            suffix={topCategory ? ` - ${parseInt(topCategory.total_commits).toLocaleString()} commits` : ''}
+            suffix={topCategory ? ` - ${
+              useWeightedData && topCategory.effective_commits
+                ? parseFloat(String(topCategory.effective_commits)).toFixed(1)
+                : parseInt(topCategory.total_commits).toLocaleString()
+            } commits` : ''}
           />
           <StatCard
-            title="Total Commits"
-            value={totalCommits}
+            title={useWeightedData ? 'Effective Commits' : 'Total Commits'}
+            value={Math.round(totalCommits).toLocaleString()}
             icon="💬"
             color="green"
           />
@@ -452,40 +502,30 @@ const ContentAnalysis = (): JSX.Element => {
             value={topRepo}
             icon="🔥"
             color="orange"
-            suffix={topRepo !== 'N/A' ? ` - ${mostActiveRepo[topRepo].toLocaleString()} commits` : ''}
+            suffix={topRepo !== 'N/A' ? ` - ${Math.round(mostActiveRepo[topRepo]).toLocaleString()} commits` : ''}
           />
         </div>
       )}
 
       {/* Weight Impact Section */}
       {!dataLoading && categoryData.length > 0 && (() => {
-        // Calculate weight impact metrics
-        const totalEffectiveCommits = categoryData.reduce((sum, c) =>
+        // Calculate weight impact metrics using FULL category data (not limited to top 15)
+        const fullTotalCommits = fullCategoryData.reduce((sum, c) => {
+          if (useWeightedData && c.effective_commits) {
+            return sum + parseFloat(String(c.effective_commits));
+          }
+          return sum + parseInt(c.total_commits || '0');
+        }, 0);
+        const fullTotalEffectiveCommits = fullCategoryData.reduce((sum, c) =>
           sum + parseFloat(String(c.effective_commits || c.total_commits)), 0
         );
-        const overallEfficiency = totalCommits > 0
-          ? (totalEffectiveCommits / totalCommits) * 100
+        const fullRawCommits = fullCategoryData.reduce((sum, c) => sum + parseInt(c.total_commits || '0'), 0);
+        const overallEfficiency = fullRawCommits > 0
+          ? (fullTotalEffectiveCommits / fullRawCommits) * 100
           : 100;
-        const deprioritizedCategories = categoryData.filter(c =>
+        const deprioritizedCategories = fullCategoryData.filter(c =>
           c.category_weight !== undefined && c.category_weight < 100
-        );
-
-        // Repository efficiency data from repoMatrixData
-        const repoEfficiencyMap: Record<string, { commits: number; effective: number }> = {};
-        repoMatrixData.forEach(item => {
-          if (!repoEfficiencyMap[item.repository]) {
-            repoEfficiencyMap[item.repository] = { commits: 0, effective: 0 };
-          }
-          repoEfficiencyMap[item.repository].commits += parseInt(String(item.total_commits || 0));
-          repoEfficiencyMap[item.repository].effective += parseFloat(String(item.effective_commits || item.total_commits));
-        });
-
-        const repoEfficiencyData = Object.entries(repoEfficiencyMap).map(([repo, data]) => ({
-          repository: repo,
-          efficiency: data.commits > 0 ? (data.effective / data.commits) * 100 : 100,
-          total_commits: data.commits,
-          effective_commits: data.effective
-        })).sort((a, b) => a.efficiency - b.efficiency);
+        ).sort((a, b) => parseInt(b.total_commits || '0') - parseInt(a.total_commits || '0'));
 
         return (overallEfficiency < 100 || deprioritizedCategories.length > 0) && (
           <div className="space-y-6">
@@ -499,19 +539,13 @@ const ContentAnalysis = (): JSX.Element => {
             </div>
 
             {/* Weight Overview Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <StatCard
                 title="Overall Weight Efficiency"
                 value={overallEfficiency.toFixed(1)}
                 icon="⚖️"
                 color="indigo"
                 suffix="%"
-              />
-              <StatCard
-                title="Effective Commits"
-                value={totalEffectiveCommits.toFixed(1)}
-                icon="✓"
-                color="green"
               />
               <StatCard
                 title="De-prioritized Categories"
@@ -606,70 +640,6 @@ const ContentAnalysis = (): JSX.Element => {
               </div>
             )}
 
-            {/* Repository Weight Efficiency Comparison */}
-            {repoEfficiencyData.length > 1 && repoEfficiencyData.some(r => r.efficiency < 100) && (
-              <div className="card">
-                <h4 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-                  Repository Weight Efficiency
-                </h4>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={repoEfficiencyData} layout="horizontal">
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                    <XAxis
-                      dataKey="efficiency"
-                      type="number"
-                      domain={[0, 100]}
-                      stroke="#6b7280"
-                      tick={{ fill: '#6b7280' }}
-                      label={{ value: 'Weight Efficiency (%)', position: 'insideBottom', offset: -5 }}
-                    />
-                    <YAxis
-                      dataKey="repository"
-                      type="category"
-                      width={150}
-                      stroke="#6b7280"
-                      tick={{ fill: '#6b7280', fontSize: 12 }}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                        border: 'none',
-                        borderRadius: '8px',
-                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                      }}
-                      content={({ payload }) => {
-                        if (!payload || !payload[0]) return null;
-                        const data = payload[0].payload;
-                        return (
-                          <div className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
-                            <div className="font-semibold text-gray-900 dark:text-white mb-1">
-                              {data.repository}
-                            </div>
-                            <div className="text-sm text-gray-600 dark:text-gray-400">
-                              <div>Efficiency: {data.efficiency.toFixed(1)}%</div>
-                              <div>Total: {data.total_commits.toLocaleString()} commits</div>
-                              <div>Effective: {data.effective_commits.toFixed(1)}</div>
-                            </div>
-                          </div>
-                        );
-                      }}
-                    />
-                    <Bar dataKey="efficiency" animationDuration={1000}>
-                      {repoEfficiencyData.map((entry, index) => (
-                        <Cell
-                          key={`cell-${index}`}
-                          fill={
-                            entry.efficiency >= 75 ? '#eab308' :
-                            entry.efficiency >= 50 ? '#f97316' :
-                            '#ef4444'
-                          }
-                        />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            )}
           </div>
         );
       })()}
@@ -702,7 +672,7 @@ const ContentAnalysis = (): JSX.Element => {
             <div className="flex justify-between items-center mb-6">
               <div>
                 <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-1">
-                  Category Breakdown
+                  Category Breakdown{!useWeightedData && ' (unweighted)'}
                 </h3>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
                   Distribution of commits across business domains
@@ -755,7 +725,7 @@ const ContentAnalysis = (): JSX.Element => {
             <div className="flex justify-between items-center mb-6">
               <div>
                 <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-1">
-                  Category Comparison
+                  Category Comparison{!useWeightedData && ' (unweighted)'}
                 </h3>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
                   Compare effort across all categories
@@ -821,7 +791,7 @@ const ContentAnalysis = (): JSX.Element => {
             <div className="flex justify-between items-center mb-6">
               <div>
                 <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-1">
-                  Category Trends Over Time
+                  Category Trends Over Time{!useWeightedData && ' (unweighted)'}
                 </h3>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
                   Evolution of category distribution month-to-month
@@ -888,7 +858,7 @@ const ContentAnalysis = (): JSX.Element => {
             <div className="flex justify-between items-center mb-6">
               <div>
                 <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-1">
-                  Category by Repository
+                  Category by Repository{!useWeightedData && ' (unweighted)'}
                 </h3>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
                   Domain ownership patterns across repositories

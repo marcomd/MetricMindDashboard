@@ -353,14 +353,16 @@ router.get('/categories', async (req: Request, res: Response) => {
       let query = `
         SELECT
           COALESCE(c.category, 'UNCATEGORIZED') as category,
+          cat.weight as category_weight,
           COUNT(c.id)::int as total_commits,
-          SUM(c.weight)::numeric as effective_commits,
+          ROUND((SUM(c.weight) / 100)::numeric, 2) as effective_commits,
           ROUND(AVG(c.weight)::numeric, 1) as avg_weight,
           ROUND((SUM(c.weight) / COUNT(c.id)::numeric) * 100, 1) as weight_efficiency_pct,
           SUM(c.lines_added + c.lines_deleted)::bigint as total_lines_changed,
           COUNT(DISTINCT c.author_email)::int as unique_authors,
           COUNT(DISTINCT c.repository_id)::int as repositories
         FROM commits c
+        LEFT JOIN categories cat ON c.category = cat.name
       `;
 
       const conditions: string[] = [];
@@ -391,7 +393,7 @@ router.get('/categories', async (req: Request, res: Response) => {
       }
 
       query += `
-        GROUP BY c.category
+        GROUP BY c.category, cat.weight
         ORDER BY total_commits DESC
       `;
 
@@ -486,13 +488,15 @@ router.get('/category-by-repo', async (req: Request, res: Response) => {
         SELECT
           r.name as repository,
           COALESCE(c.category, 'UNCATEGORIZED') as category,
+          cat.weight as category_weight,
           COUNT(c.id)::int as total_commits,
-          SUM(c.weight)::numeric as effective_commits,
+          ROUND((SUM(c.weight) / 100)::numeric, 2) as effective_commits,
           ROUND(AVG(c.weight)::numeric, 1) as avg_weight,
           ROUND((SUM(c.weight) / COUNT(c.id)::numeric) * 100, 1) as weight_efficiency_pct,
           SUM(c.lines_added + c.lines_deleted)::bigint as total_lines_changed
         FROM commits c
         JOIN repositories r ON c.repository_id = r.id
+        LEFT JOIN categories cat ON c.category = cat.name
       `;
 
       const conditions: string[] = [];
@@ -516,7 +520,7 @@ router.get('/category-by-repo', async (req: Request, res: Response) => {
       }
 
       query += `
-        GROUP BY r.name, c.category
+        GROUP BY r.name, c.category, cat.weight
         ORDER BY r.name, total_commits DESC
       `;
 

@@ -5,6 +5,32 @@ All notable changes to Metric Mind Dashboard will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2025-11-21
+
+### Added
+- **"Use Weighted Data" toggle**: Interactive checkbox on Content Analysis page to switch between weighted (effective) and unweighted (raw) commit data
+- **Category weight support in filtered queries**: API endpoints now return `category_weight` field when date/repository filters are applied
+- **Repository Weight Efficiency chart**: Moved from Content Analysis to Comparison page for better contextual placement
+- **Comprehensive de-prioritized categories view**: Now displays ALL categories with weight < 100, not just those in top 15 by volume
+
+### Changed
+- **Default date range**: Content Analysis page now defaults to previous month (first day to last day) instead of last 3 months
+- **Chart title indicators**: All charts display "(unweighted)" suffix when weighted data toggle is disabled
+- **Weight Impact section**: Removed duplicate "Effective Commits" card, now shows only "Overall Weight Efficiency" and "De-prioritized Categories" count
+- **De-prioritized categories sorting**: Categories are now sorted by commit volume (descending) to highlight most impactful work first
+
+### Fixed
+- **Effective commits calculation**: Fixed API endpoints `/categories` and `/category-by-repo` to correctly divide `SUM(c.weight)` by 100, resolving incorrect values (e.g., 4,900 instead of 49)
+- **Disappearing categories bug**: De-prioritized categories no longer disappear when extending date ranges, as they're now calculated from full dataset instead of top-15-filtered data
+- **Category weight missing**: Added `LEFT JOIN categories` to custom queries so `category_weight` field is available when filters are applied
+
+### Technical Details
+- Added `fullCategoryData` state in Content Analysis component to store unfiltered category data
+- Updated SQL queries in `/api/categories` and `/api/category-by-repo` endpoints to include JOIN with `categories` table
+- Modified GROUP BY clauses to include `cat.weight` for proper aggregation
+- Enhanced Weight Impact section calculations to use full category dataset instead of top-15-limited data
+- Moved Repository Weight Efficiency chart logic from ContentAnalysis.tsx to Comparison.tsx with adapted data mapping
+
 ## [1.1.1] - 2025-11-21
 
 ### Changed
@@ -119,6 +145,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version History Summary
 
+- **1.2.0**: Weighted data toggle, improved category filtering, and UI refinements
+- **1.1.1**: Standardized effective_commits format across endpoints
 - **1.1.0**: Weight analysis system with commit and category weighting
 - **1.0.0**: Production-ready release with TypeScript migration
 - **0.3.0**: Enhanced analytics features and authentication improvements
