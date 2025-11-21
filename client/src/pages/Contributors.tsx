@@ -86,7 +86,9 @@ function Contributors(): JSX.Element {
   const topThree: Contributor[] = filteredContributors.slice(0, 3);
   const chartData = filteredContributors.slice(0, 15).map(c => ({
     ...c,
-    effective_commits: c.effective_commits ? Number(c.effective_commits) / 100 : c.total_commits
+    effective_commits: (c.effective_commits != null && Number(c.effective_commits) !== 0)
+      ? Number(c.effective_commits)
+      : c.total_commits
   }));
 
   const barColors: string[] = [
@@ -217,8 +219,8 @@ function Contributors(): JSX.Element {
                 {topThree[1].author_name}
               </p>
               <p className="text-xl sm:text-2xl font-bold">
-                {useWeightedData && topThree[1].effective_commits
-                  ? Math.round(Number(topThree[1].effective_commits) / 100)
+                {useWeightedData && topThree[1].effective_commits != null && Number(topThree[1].effective_commits) !== 0
+                  ? Math.round(Number(topThree[1].effective_commits))
                   : topThree[1].total_commits}
               </p>
               <p className="text-xs opacity-80">commits</p>
@@ -233,8 +235,8 @@ function Contributors(): JSX.Element {
                 {topThree[0].author_name}
               </p>
               <p className="text-2xl sm:text-3xl font-bold">
-                {useWeightedData && topThree[0].effective_commits
-                  ? Math.round(Number(topThree[0].effective_commits) / 100)
+                {useWeightedData && topThree[0].effective_commits != null && Number(topThree[0].effective_commits) !== 0
+                  ? Math.round(Number(topThree[0].effective_commits))
                   : topThree[0].total_commits}
               </p>
               <p className="text-xs opacity-80">commits</p>
@@ -249,8 +251,8 @@ function Contributors(): JSX.Element {
                 {topThree[2].author_name}
               </p>
               <p className="text-xl sm:text-2xl font-bold">
-                {useWeightedData && topThree[2].effective_commits
-                  ? Math.round(Number(topThree[2].effective_commits) / 100)
+                {useWeightedData && topThree[2].effective_commits != null && Number(topThree[2].effective_commits) !== 0
+                  ? Math.round(Number(topThree[2].effective_commits))
                   : topThree[2].total_commits}
               </p>
               <p className="text-xs opacity-80">commits</p>
@@ -343,8 +345,8 @@ function Contributors(): JSX.Element {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white font-semibold">
-                    {(useWeightedData && contributor.effective_commits
-                      ? Math.round(Number(contributor.effective_commits) / 100)
+                    {(useWeightedData && contributor.effective_commits != null && Number(contributor.effective_commits) !== 0
+                      ? Math.round(Number(contributor.effective_commits))
                       : contributor.total_commits
                     ).toLocaleString()}
                   </td>

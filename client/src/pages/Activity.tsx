@@ -106,8 +106,14 @@ function Activity(): JSX.Element {
         };
       }
       // Use weighted or total commits based on toggle
+      // Note: effective_commits from daily-activity API is already calculated correctly (not multiplied by 100)
+      const effectiveCommitsValue = item.effective_commits
+        ? parseFloat(String(item.effective_commits))
+        : 0;
       const commits = useWeightedData
-        ? Math.round((parseInt(String(item.effective_commits || item.total_commits || 0), 10)) / 100)
+        ? (effectiveCommitsValue > 0
+            ? Math.round(effectiveCommitsValue)
+            : parseInt(String(item.total_commits || 0), 10))
         : parseInt(String(item.total_commits || 0), 10);
       dateMap[date].count += commits;
       // Use weighted or total lines based on toggle
