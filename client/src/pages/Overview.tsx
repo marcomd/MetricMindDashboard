@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { fetchSummary, fetchRepos, fetchContributorsDateRange } from '../utils/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import StatCard from '../components/StatCard';
+import WeightBadge from '../components/WeightBadge';
 import { formatDate } from '../utils/dateFormat';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
@@ -10,6 +11,8 @@ interface Repository {
   name: string;
   description: string | null;
   total_commits: string | number;
+  effective_commits?: string | number;
+  avg_weight?: string | number;
   unique_authors: number;
   latest_commit: string | null;
 }
@@ -21,6 +24,9 @@ interface DateRange {
 
 interface OverallStats {
   total_commits: number;
+  effective_commits?: string | number;
+  avg_weight?: string | number;
+  weight_efficiency_pct?: string | number;
   total_lines_added: string;
   total_lines_deleted: string;
   total_lines_changed: string;
@@ -38,12 +44,16 @@ interface LargestCommit {
   lines_added: number;
   lines_deleted: number;
   lines_changed: number;
+  weight?: number;
 }
 
 interface TopContributor {
   author_name: string;
   author_email: string;
   total_commits: number;
+  effective_commits?: string | number;
+  avg_weight?: string | number;
+  weight_efficiency_pct?: string | number;
   repositories_contributed: number;
   total_lines_changed: string;
   avg_lines_changed_per_commit: number;
@@ -311,6 +321,8 @@ function Overview(): JSX.Element {
             value={overall_stats.total_commits}
             icon="📊"
             color="blue"
+            effectiveValue={overall_stats.effective_commits ? parseFloat(String(overall_stats.effective_commits)) : undefined}
+            weightEfficiency={overall_stats.weight_efficiency_pct ? parseFloat(String(overall_stats.weight_efficiency_pct)) : undefined}
           />
           <StatCard
             title="Total Lines Added"
@@ -403,6 +415,9 @@ function Overview(): JSX.Element {
                     Lines Changed
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Weight
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Commit Message
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -433,6 +448,19 @@ function Overview(): JSX.Element {
                       <div className="text-xs text-gray-500 dark:text-gray-400">
                         +{commit.lines_added.toLocaleString()} -{commit.lines_deleted.toLocaleString()}
                       </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                      {commit.weight !== undefined && commit.weight < 100 ? (
+                        <span className={`font-medium ${
+                          commit.weight >= 75 ? 'text-yellow-600 dark:text-yellow-400' :
+                          commit.weight >= 50 ? 'text-orange-600 dark:text-orange-400' :
+                          'text-red-600 dark:text-red-400'
+                        }`}>
+                          {commit.weight}%
+                        </span>
+                      ) : (
+                        <span className="text-gray-400 dark:text-gray-500">100%</span>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900 dark:text-white max-w-md">
                       <div className="line-clamp-2" title={commit.commit_message}>
@@ -514,6 +542,9 @@ function Overview(): JSX.Element {
                     Commits
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Weight Efficiency
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Repos
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -543,6 +574,25 @@ function Overview(): JSX.Element {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white font-semibold">
                       {contributor.total_commits.toLocaleString()}
+                      {contributor.effective_commits && contributor.weight_efficiency_pct && parseFloat(String(contributor.weight_efficiency_pct)) < 100 && (
+                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                          {typeof contributor.effective_commits === 'number'
+                            ? contributor.effective_commits.toFixed(1)
+                            : parseFloat(String(contributor.effective_commits)).toFixed(1)} effective
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      {contributor.weight_efficiency_pct !== undefined ? (
+                        <WeightBadge
+                          efficiency={parseFloat(String(contributor.weight_efficiency_pct))}
+                          totalCommits={contributor.total_commits}
+                          effectiveCommits={contributor.effective_commits}
+                          size="sm"
+                        />
+                      ) : (
+                        <span className="text-gray-400 dark:text-gray-500">-</span>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                       {contributor.repositories_contributed}

@@ -1,5 +1,6 @@
 import React from 'react';
 import CountUp from 'react-countup';
+import WeightBadge from './WeightBadge';
 
 type StatCardColor = 'blue' | 'purple' | 'green' | 'orange' | 'pink' | 'indigo';
 
@@ -10,6 +11,10 @@ interface StatCardProps {
   icon: React.ReactNode;
   color?: StatCardColor;
   suffix?: string;
+  // Weight-related props
+  effectiveValue?: number | string;
+  weightEfficiency?: number | string;
+  showWeightBadge?: boolean;
 }
 
 const StatCard: React.FC<StatCardProps> = ({
@@ -18,7 +23,10 @@ const StatCard: React.FC<StatCardProps> = ({
   change,
   icon,
   color = 'blue',
-  suffix = ''
+  suffix = '',
+  effectiveValue,
+  weightEfficiency,
+  showWeightBadge = true
 }) => {
   const colorClasses: Record<StatCardColor, string> = {
     blue: 'from-blue-500 to-blue-600',
@@ -52,6 +60,23 @@ const StatCard: React.FC<StatCardProps> = ({
               value
             )}
           </p>
+          {/* Weight sub-text */}
+          {effectiveValue !== undefined && weightEfficiency !== undefined && (
+            <div className="text-white/90 text-sm mt-2 flex items-center gap-2">
+              <span>
+                {typeof effectiveValue === 'number' ? effectiveValue.toFixed(1) : effectiveValue} effective
+              </span>
+              {showWeightBadge && weightEfficiency && (
+                <WeightBadge
+                  efficiency={weightEfficiency}
+                  totalCommits={value}
+                  effectiveCommits={effectiveValue}
+                  size="sm"
+                />
+              )}
+            </div>
+          )}
+          {/* Change indicator */}
           {change !== undefined && change !== null && (
             <p className="text-white/80 text-sm mt-2 flex items-center">
               <span className={`mr-1 ${change >= 0 ? 'text-green-200' : 'text-red-200'}`}>

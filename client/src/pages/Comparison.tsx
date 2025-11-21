@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Scale } from 'lucide-react';
 import { fetchCompareRepos } from '../utils/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import StatCard from '../components/StatCard';
@@ -8,7 +9,11 @@ import CountUp from 'react-countup';
 interface RepoComparisonData {
   repository_name: string;
   total_commits: string;
+  effective_commits?: string | number;
+  avg_weight?: string | number;
+  weight_efficiency_pct?: string | number;
   total_lines_changed: string;
+  weighted_lines_changed?: string | number;
   months_active: number;
   avg_authors_per_month: string;
   avg_lines_per_commit: string;
@@ -36,6 +41,7 @@ const Comparison = (): JSX.Element => {
   const [loading, setLoading] = useState<boolean>(true);
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'total_commits', direction: 'desc' });
   const [error, setError] = useState<string | null>(null);
+  const [useWeightedData, setUseWeightedData] = useState<boolean>(true);
 
   useEffect(() => {
     fetchCompareRepos()
@@ -129,7 +135,12 @@ const Comparison = (): JSX.Element => {
   }
 
   const topCommitsRepo = getTopRepo('total_commits');
-  const topLinesRepo = getTopRepo('total_lines_changed');
+  // Use weighted or total lines based on toggle
+  const topLinesRepo = useWeightedData && data.length > 0 && data[0].weighted_lines_changed !== undefined
+    ? data.reduce((max, repo) =>
+        (parseFloat(String(repo.weighted_lines_changed)) || 0) > (parseFloat(String(max.weighted_lines_changed)) || 0) ? repo : max
+      )
+    : getTopRepo('total_lines_changed');
   const topAuthorsRepo = getTopRepo('avg_authors_per_month');
   const mostActiveRepo = getTopRepo('months_active');
 
@@ -145,6 +156,19 @@ const Comparison = (): JSX.Element => {
             Compare repositories side-by-side across key metrics (last 6 months)
           </p>
         </div>
+        <div>
+          {/* Use Weighted Data Checkbox */}
+          <label className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-300">
+            <input
+              type="checkbox"
+              checked={useWeightedData}
+              onChange={(e) => setUseWeightedData(e.target.checked)}
+              className="w-4 h-4 text-primary-600 bg-gray-100 border-gray-300 rounded focus:ring-primary-500 focus:ring-2"
+            />
+            <Scale className="w-4 h-4" />
+            <span className="text-sm font-medium whitespace-nowrap">Use Weighted Data</span>
+          </label>
+        </div>
       </div>
 
       {/* Top Performers Cards */}
@@ -159,7 +183,11 @@ const Comparison = (): JSX.Element => {
         <StatCard
           title="Most Lines Changed"
           value={topLinesRepo?.repository_name || 'N/A'}
-          suffix={topLinesRepo ? `${parseInt(topLinesRepo.total_lines_changed).toLocaleString()} lines` : ''}
+          suffix={topLinesRepo ? `${Math.round(parseFloat(String(
+            useWeightedData
+              ? (topLinesRepo.weighted_lines_changed || topLinesRepo.total_lines_changed)
+              : topLinesRepo.total_lines_changed
+          ))).toLocaleString()} lines` : ''}
           icon="📝"
           color="purple"
         />
@@ -211,7 +239,7 @@ const Comparison = (): JSX.Element => {
       {/* Lines Changed Comparison */}
       <div className="card p-6">
         <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
-          Lines Changed Comparison
+          Lines Changed Comparison{!useWeightedData && ' (unweighted)'}
         </h3>
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={sortedData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
@@ -226,7 +254,12 @@ const Comparison = (): JSX.Element => {
             />
             <YAxis stroke="#6b7280" style={{ fontSize: '12px' }} />
             <Tooltip content={<CustomTooltip />} />
-            <Bar dataKey="total_lines_changed" fill="#f59e0b" name="Total Lines Changed" radius={[4, 4, 0, 0]} />
+            <Bar
+              dataKey={useWeightedData ? "weighted_lines_changed" : "total_lines_changed"}
+              fill="#f59e0b"
+              name={useWeightedData ? "Lines Changed (Weighted)" : "Lines Changed"}
+              radius={[4, 4, 0, 0]}
+            />
           </BarChart>
         </ResponsiveContainer>
       </div>

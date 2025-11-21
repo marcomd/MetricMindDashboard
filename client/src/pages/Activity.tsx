@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
+import { Scale } from 'lucide-react';
 import { fetchRepos, fetchDailyActivity } from '../utils/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import CalendarHeatmap from 'react-calendar-heatmap';
@@ -14,7 +15,11 @@ interface ActivityItem {
   commit_date: string;
   repository_name: string;
   total_commits: string | number;
+  effective_commits?: string | number;
+  avg_weight?: string | number;
+  weight_efficiency_pct?: string | number;
   total_lines_changed: string | number;
+  weighted_lines_changed?: string | number;
   unique_authors: string | number;
 }
 
@@ -37,6 +42,7 @@ function Activity(): JSX.Element {
   const [loading, setLoading] = useState<boolean>(true);
   const [dataLoading, setDataLoading] = useState<boolean>(false);
   const [daysToShow, setDaysToShow] = useState<number>(365);
+  const [useWeightedData, setUseWeightedData] = useState<boolean>(true);
 
   // Fetch repos on mount
   useEffect(() => {
@@ -70,12 +76,8 @@ function Activity(): JSX.Element {
     }
   }, [selectedRepo, daysToShow, loading]);
 
-  if (loading) {
-    return <LoadingSpinner />;
-  }
-
-  // Aggregate data by date for calendar heatmap
-  const aggregateByDate = (): HeatmapDataPoint[] => {
+  // Aggregate data by date for calendar heatmap (must be before early return)
+  const heatmapData: HeatmapDataPoint[] = useMemo(() => {
     if (!activityData || activityData.length === 0) {
       return [];
     }
@@ -103,9 +105,16 @@ function Activity(): JSX.Element {
           authors: new Set()
         };
       }
-      // Convert strings to numbers
-      dateMap[date].count += parseInt(String(item.total_commits || 0), 10);
-      dateMap[date].lines_changed += parseInt(String(item.total_lines_changed || 0), 10);
+      // Use weighted or total commits based on toggle
+      const commits = useWeightedData
+        ? Math.round((parseInt(String(item.effective_commits || item.total_commits || 0), 10)) / 100)
+        : parseInt(String(item.total_commits || 0), 10);
+      dateMap[date].count += commits;
+      // Use weighted or total lines based on toggle
+      const linesChanged = useWeightedData
+        ? parseInt(String(item.weighted_lines_changed || item.total_lines_changed || 0), 10)
+        : parseInt(String(item.total_lines_changed || 0), 10);
+      dateMap[date].lines_changed += linesChanged;
       dateMap[date].authors.add(item.unique_authors);
     });
 
@@ -115,9 +124,7 @@ function Activity(): JSX.Element {
       lines_changed: d.lines_changed,
       authors: d.authors.size
     }));
-  };
-
-  const heatmapData: HeatmapDataPoint[] = aggregateByDate();
+  }, [activityData, useWeightedData]);
 
   // Calculate stats
   const totalCommits = heatmapData.reduce((sum, d) => sum + d.count, 0);
@@ -130,7 +137,7 @@ function Activity(): JSX.Element {
     : null;
 
   // Calculate day of week distribution
-  const dayOfWeekData = (): DayOfWeekData[] => {
+  const dayDistribution: DayOfWeekData[] = useMemo(() => {
     const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const dayMap: DayOfWeekData[] = days.map(name => ({ name, commits: 0 }));
 
@@ -145,9 +152,12 @@ function Activity(): JSX.Element {
     });
 
     return dayMap;
-  };
+  }, [heatmapData]);
 
-  const dayDistribution: DayOfWeekData[] = dayOfWeekData();
+  // Show loading spinner while initial data loads
+  if (loading) {
+    return <LoadingSpinner />;
+  }
 
   // Prepare data for calendar heatmap (last N days)
   const getDateRange = (): { start: Date; end: Date } => {
@@ -205,6 +215,18 @@ function Activity(): JSX.Element {
             <option value={180}>Last 6 Months</option>
             <option value={90}>Last 3 Months</option>
           </select>
+
+          {/* Use Weighted Data Checkbox */}
+          <label className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-300">
+            <input
+              type="checkbox"
+              checked={useWeightedData}
+              onChange={(e) => setUseWeightedData(e.target.checked)}
+              className="w-4 h-4 text-primary-600 bg-gray-100 border-gray-300 rounded focus:ring-primary-500 focus:ring-2"
+            />
+            <Scale className="w-4 h-4" />
+            <span className="text-sm font-medium whitespace-nowrap">Use Weighted Data</span>
+          </label>
         </div>
       </div>
 

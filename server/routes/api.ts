@@ -12,6 +12,8 @@ router.get('/repos', async (req: Request, res: Response) => {
         r.name,
         r.description,
         COUNT(c.id) as total_commits,
+        SUM(c.weight)::numeric as effective_commits,
+        ROUND(AVG(c.weight)::numeric, 1) as avg_weight,
         MAX(c.commit_date) as latest_commit,
         COUNT(DISTINCT c.author_email) as unique_authors
       FROM repositories r
@@ -35,9 +37,15 @@ router.get('/monthly-trends', async (req: Request, res: Response) => {
         year_month,
         month_start_date,
         SUM(total_commits)::int as total_commits,
+        SUM(effective_commits)::numeric as effective_commits,
+        ROUND(AVG(avg_weight)::numeric, 1) as avg_weight,
+        ROUND(AVG(weight_efficiency_pct)::numeric, 1) as weight_efficiency_pct,
         SUM(total_lines_added)::bigint as total_lines_added,
         SUM(total_lines_deleted)::bigint as total_lines_deleted,
         SUM(total_lines_changed)::bigint as total_lines_changed,
+        SUM(weighted_lines_added)::numeric as weighted_lines_added,
+        SUM(weighted_lines_deleted)::numeric as weighted_lines_deleted,
+        SUM(weighted_lines_changed)::numeric as weighted_lines_changed,
         COUNT(DISTINCT repository_name) as active_repositories,
         SUM(unique_authors)::int as total_authors,
         ROUND(AVG(avg_lines_changed_per_commit)::numeric, 1) as avg_lines_changed_per_commit
@@ -63,9 +71,15 @@ router.get('/monthly-trends/:repoName', async (req: Request, res: Response) => {
         year_month,
         month_start_date,
         total_commits,
+        effective_commits,
+        avg_weight,
+        weight_efficiency_pct,
         total_lines_added,
         total_lines_deleted,
         total_lines_changed,
+        weighted_lines_added,
+        weighted_lines_deleted,
+        weighted_lines_changed,
         unique_authors,
         avg_lines_changed_per_commit,
         avg_commits_per_author
@@ -138,8 +152,12 @@ router.get('/contributors', async (req: Request, res: Response) => {
           MAX(author_name) as author_name,
           MAX(author_email) as author_email,
           COUNT(id)::int as total_commits,
+          SUM(weight)::numeric as effective_commits,
+          ROUND(AVG(weight)::numeric, 1) as avg_weight,
+          ROUND((SUM(weight) / COUNT(id)::numeric) * 100, 1) as weight_efficiency_pct,
           COUNT(DISTINCT repository_id)::int as repositories_contributed,
           SUM(lines_added + lines_deleted)::bigint as total_lines_changed,
+          SUM((lines_added + lines_deleted) * weight / 100)::numeric as weighted_lines_changed,
           ROUND(AVG(lines_added + lines_deleted)::numeric, 1) as avg_lines_changed_per_commit
         FROM normalized_commits
         GROUP BY normalized_name
@@ -157,8 +175,12 @@ router.get('/contributors', async (req: Request, res: Response) => {
           author_name,
           author_email,
           total_commits,
+          effective_commits,
+          avg_weight,
+          weight_efficiency_pct,
           repositories_contributed,
           total_lines_changed,
+          weighted_lines_changed,
           avg_lines_changed_per_commit
         FROM v_contributor_stats
         ORDER BY total_commits DESC
@@ -197,7 +219,11 @@ router.get('/daily-activity', async (req: Request, res: Response) => {
         commit_date,
         repository_name,
         total_commits,
+        effective_commits,
+        avg_weight,
+        weight_efficiency_pct,
         total_lines_changed,
+        weighted_lines_changed,
         unique_authors
       FROM v_daily_stats_by_repo
       WHERE commit_date >= CURRENT_DATE - INTERVAL '${days} days'
@@ -217,7 +243,11 @@ router.get('/compare-repos', async (req: Request, res: Response) => {
       SELECT
         repository_name,
         SUM(total_commits)::int as total_commits,
+        SUM(effective_commits)::numeric as effective_commits,
+        ROUND(AVG(avg_weight)::numeric, 1) as avg_weight,
+        ROUND(AVG(weight_efficiency_pct)::numeric, 1) as weight_efficiency_pct,
         SUM(total_lines_changed)::bigint as total_lines_changed,
+        SUM(weighted_lines_changed)::numeric as weighted_lines_changed,
         COUNT(DISTINCT year_month) as months_active,
         ROUND(AVG(unique_authors)::numeric, 1) as avg_authors_per_month,
         ROUND(AVG(avg_lines_changed_per_commit)::numeric, 1) as avg_lines_per_commit
@@ -250,6 +280,8 @@ router.get('/before-after/:repoName', async (req: Request, res: Response) => {
         SELECT
           AVG(avg_lines_changed_per_commit)::numeric as avg_lines_per_commit,
           AVG(total_commits)::numeric as avg_commits_per_month,
+          AVG(effective_commits)::numeric as avg_effective_commits_per_month,
+          AVG(avg_weight)::numeric as avg_weight,
           AVG(unique_authors)::numeric as avg_authors,
           AVG(avg_commits_per_author)::numeric as avg_commits_per_committer
         FROM mv_monthly_stats_by_repo
@@ -260,6 +292,8 @@ router.get('/before-after/:repoName', async (req: Request, res: Response) => {
         SELECT
           AVG(avg_lines_changed_per_commit)::numeric as avg_lines_per_commit,
           AVG(total_commits)::numeric as avg_commits_per_month,
+          AVG(effective_commits)::numeric as avg_effective_commits_per_month,
+          AVG(avg_weight)::numeric as avg_weight,
           AVG(unique_authors)::numeric as avg_authors,
           AVG(avg_commits_per_author)::numeric as avg_commits_per_committer
         FROM mv_monthly_stats_by_repo
@@ -271,6 +305,8 @@ router.get('/before-after/:repoName', async (req: Request, res: Response) => {
         SELECT
           AVG(avg_lines_changed_per_commit)::numeric as avg_lines_per_commit,
           AVG(total_commits)::numeric as avg_commits_per_month,
+          AVG(effective_commits)::numeric as avg_effective_commits_per_month,
+          AVG(avg_weight)::numeric as avg_weight,
           AVG(unique_authors)::numeric as avg_authors,
           AVG(avg_commits_per_author)::numeric as avg_commits_per_committer
         FROM mv_monthly_stats_by_repo
@@ -282,6 +318,8 @@ router.get('/before-after/:repoName', async (req: Request, res: Response) => {
         SELECT
           AVG(avg_lines_changed_per_commit)::numeric as avg_lines_per_commit,
           AVG(total_commits)::numeric as avg_commits_per_month,
+          AVG(effective_commits)::numeric as avg_effective_commits_per_month,
+          AVG(avg_weight)::numeric as avg_weight,
           AVG(unique_authors)::numeric as avg_authors,
           AVG(avg_commits_per_author)::numeric as avg_commits_per_committer
         FROM mv_monthly_stats_by_repo
@@ -316,6 +354,9 @@ router.get('/categories', async (req: Request, res: Response) => {
         SELECT
           COALESCE(c.category, 'UNCATEGORIZED') as category,
           COUNT(c.id)::int as total_commits,
+          SUM(c.weight)::numeric as effective_commits,
+          ROUND(AVG(c.weight)::numeric, 1) as avg_weight,
+          ROUND((SUM(c.weight) / COUNT(c.id)::numeric) * 100, 1) as weight_efficiency_pct,
           SUM(c.lines_added + c.lines_deleted)::bigint as total_lines_changed,
           COUNT(DISTINCT c.author_email)::int as unique_authors,
           COUNT(DISTINCT c.repository_id)::int as repositories
@@ -361,7 +402,11 @@ router.get('/categories', async (req: Request, res: Response) => {
       const result = await pool.query(`
         SELECT
           category,
+          category_weight,
           total_commits,
+          effective_commits,
+          avg_weight,
+          weight_efficiency_pct,
           total_lines_changed,
           unique_authors,
           repositories
@@ -391,6 +436,9 @@ router.get('/category-trends', async (req: Request, res: Response) => {
           mcs.month_start_date,
           COALESCE(mcs.category, 'UNCATEGORIZED') as category,
           mcs.total_commits,
+          mcs.effective_commits,
+          mcs.avg_weight,
+          mcs.weight_efficiency_pct,
           mcs.total_lines_changed,
           mcs.unique_authors
         FROM mv_monthly_category_stats mcs
@@ -407,6 +455,9 @@ router.get('/category-trends', async (req: Request, res: Response) => {
           month_start_date,
           COALESCE(category, 'UNCATEGORIZED') as category,
           SUM(total_commits)::int as total_commits,
+          SUM(effective_commits)::numeric as effective_commits,
+          ROUND(AVG(avg_weight)::numeric, 1) as avg_weight,
+          ROUND(AVG(weight_efficiency_pct)::numeric, 1) as weight_efficiency_pct,
           SUM(total_lines_changed)::bigint as total_lines_changed,
           SUM(unique_authors)::int as unique_authors
         FROM mv_monthly_category_stats
@@ -436,6 +487,9 @@ router.get('/category-by-repo', async (req: Request, res: Response) => {
           r.name as repository,
           COALESCE(c.category, 'UNCATEGORIZED') as category,
           COUNT(c.id)::int as total_commits,
+          SUM(c.weight)::numeric as effective_commits,
+          ROUND(AVG(c.weight)::numeric, 1) as avg_weight,
+          ROUND((SUM(c.weight) / COUNT(c.id)::numeric) * 100, 1) as weight_efficiency_pct,
           SUM(c.lines_added + c.lines_deleted)::bigint as total_lines_changed
         FROM commits c
         JOIN repositories r ON c.repository_id = r.id
@@ -472,12 +526,16 @@ router.get('/category-by-repo', async (req: Request, res: Response) => {
       // Use view for unfiltered queries
       const result = await pool.query(`
         SELECT
-          repository,
+          repository_name as repository,
           category,
+          category_weight,
           total_commits,
+          effective_commits,
+          avg_weight,
+          weight_efficiency_pct,
           total_lines_changed
         FROM v_category_by_repo
-        ORDER BY repository, total_commits DESC
+        ORDER BY repository_name, total_commits DESC
       `);
       res.json(result.rows);
     }
@@ -525,7 +583,8 @@ router.get('/monthly-commits/:year_month', async (req: Request, res: Response) =
         ${hasRepoFilter ? 'r.name' : '(SELECT name FROM repositories WHERE id = c.repository_id)'} as repository_name,
         (c.lines_added + c.lines_deleted) as lines_changed,
         c.lines_added,
-        c.lines_deleted
+        c.lines_deleted,
+        c.weight
       FROM commits c
     `;
 
@@ -597,6 +656,9 @@ router.get('/summary', async (req: Request, res: Response) => {
     const statsQuery = `
       SELECT
         COUNT(c.id)::int as total_commits,
+        COALESCE(SUM(c.weight), 0)::numeric as effective_commits,
+        COALESCE(ROUND(AVG(c.weight)::numeric, 1), 0) as avg_weight,
+        COALESCE(ROUND((SUM(c.weight) / COUNT(c.id)::numeric) * 100, 1), 0) as weight_efficiency_pct,
         COALESCE(SUM(c.lines_added), 0)::bigint as total_lines_added,
         COALESCE(SUM(c.lines_deleted), 0)::bigint as total_lines_deleted,
         COALESCE(SUM(c.lines_added + c.lines_deleted), 0)::bigint as total_lines_changed,
@@ -617,7 +679,8 @@ router.get('/summary', async (req: Request, res: Response) => {
         ${hasRepoFilter ? 'r.name' : '(SELECT name FROM repositories WHERE id = c.repository_id)'} as repository_name,
         (c.lines_added + c.lines_deleted) as lines_changed,
         c.lines_added,
-        c.lines_deleted
+        c.lines_deleted,
+        c.weight
       ${baseQuery}
       ${whereClause}
       ORDER BY lines_changed DESC
@@ -638,6 +701,9 @@ router.get('/summary', async (req: Request, res: Response) => {
         MAX(author_name) as author_name,
         MAX(author_email) as author_email,
         COUNT(id)::int as total_commits,
+        SUM(weight)::numeric as effective_commits,
+        ROUND(AVG(weight)::numeric, 1) as avg_weight,
+        ROUND((SUM(weight) / COUNT(id)::numeric) * 100, 1) as weight_efficiency_pct,
         COUNT(DISTINCT repository_id)::int as repositories_contributed,
         SUM(lines_added + lines_deleted)::bigint as total_lines_changed,
         ROUND(AVG(lines_added + lines_deleted)::numeric, 1) as avg_lines_changed_per_commit

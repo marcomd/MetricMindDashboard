@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { TrendingUp, Code, Users, User, Lightbulb } from 'lucide-react';
+import { TrendingUp, Code, Users, User, Lightbulb, Scale } from 'lucide-react';
 import { fetchRepos, fetchMonthlyTrends, fetchGlobalMonthlyTrends } from '../utils/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import MonthlyCommitDetails from '../components/MonthlyCommitDetails';
@@ -16,9 +16,15 @@ interface Repository {
 interface TrendData {
   year_month: string;
   total_commits: number;
+  effective_commits?: number;
+  avg_weight?: number;
+  weight_efficiency_pct?: number;
   total_lines_added: number;
   total_lines_deleted: number;
   total_lines_changed: number;
+  weighted_lines_added?: number;
+  weighted_lines_deleted?: number;
+  weighted_lines_changed?: number;
   unique_authors?: number;
   total_authors?: number;
   avg_lines_changed_per_commit: string;
@@ -32,6 +38,7 @@ function Trends(): JSX.Element {
   const [dataLoading, setDataLoading] = useState<boolean>(false);
   const [monthsToShow, setMonthsToShow] = useState<number>(12);
   const [perCommitter, setPerCommitter] = useState<boolean>(false);
+  const [useWeightedData, setUseWeightedData] = useState<boolean>(true);
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState<boolean>(false);
 
@@ -89,9 +96,13 @@ function Trends(): JSX.Element {
       return {
         ...month,
         total_commits: parseFloat((month.total_commits / authors).toFixed(1)),
+        effective_commits: month.effective_commits ? parseFloat((month.effective_commits / authors).toFixed(1)) : undefined,
         total_lines_added: parseFloat((month.total_lines_added / authors).toFixed(1)),
         total_lines_deleted: parseFloat((month.total_lines_deleted / authors).toFixed(1)),
         total_lines_changed: parseFloat((month.total_lines_changed / authors).toFixed(1)),
+        weighted_lines_added: month.weighted_lines_added ? parseFloat((month.weighted_lines_added / authors).toFixed(1)) : undefined,
+        weighted_lines_deleted: month.weighted_lines_deleted ? parseFloat((month.weighted_lines_deleted / authors).toFixed(1)) : undefined,
+        weighted_lines_changed: month.weighted_lines_changed ? parseFloat((month.weighted_lines_changed / authors).toFixed(1)) : undefined,
       };
     });
   };
@@ -163,6 +174,18 @@ function Trends(): JSX.Element {
             <User className="w-4 h-4" />
             <span className="text-sm font-medium whitespace-nowrap">Per Committer</span>
           </label>
+
+          {/* Use Weighted Data Checkbox */}
+          <label className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-300">
+            <input
+              type="checkbox"
+              checked={useWeightedData}
+              onChange={(e) => setUseWeightedData(e.target.checked)}
+              className="w-4 h-4 text-primary-600 bg-gray-100 border-gray-300 rounded focus:ring-primary-500 focus:ring-2"
+            />
+            <Scale className="w-4 h-4" />
+            <span className="text-sm font-medium whitespace-nowrap">Use Weighted Data</span>
+          </label>
         </div>
       </div>
 
@@ -175,7 +198,9 @@ function Trends(): JSX.Element {
             {/* Commits Over Time */}
             <div className="card">
               <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-                Commits Over Time{perCommitter && ' (per committer)'}
+                Commits Over Time
+                {perCommitter && ' (per committer)'}
+                {!useWeightedData && ' (unweighted)'}
               </h3>
               <ResponsiveContainer width="100%" height={300}>
                 <AreaChart data={displayData} onClick={handleMonthClick}>
@@ -203,13 +228,17 @@ function Trends(): JSX.Element {
                   />
                   <Area
                     type="monotone"
-                    dataKey="total_commits"
+                    dataKey={useWeightedData ? "effective_commits" : "total_commits"}
                     stroke="#3b82f6"
                     strokeWidth={2}
                     fillOpacity={1}
                     fill="url(#colorCommits)"
                     animationDuration={1000}
-                    name={perCommitter ? "Commits (per committer)" : "Commits"}
+                    name={
+                      useWeightedData
+                        ? (perCommitter ? "Effective Commits (per committer)" : "Effective Commits")
+                        : (perCommitter ? "Commits (per committer)" : "Commits")
+                    }
                   />
                 </AreaChart>
               </ResponsiveContainer>
@@ -228,7 +257,9 @@ function Trends(): JSX.Element {
             {/* Lines Changed */}
             <div className="card">
               <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-                Lines Changed vs Added vs Deleted{perCommitter && ' (per committer)'}
+                Lines Changed vs Added vs Deleted
+                {perCommitter && ' (per committer)'}
+                {!useWeightedData && ' (unweighted)'}
               </h3>
               <ResponsiveContainer width="100%" height={300}>
                 <LineChart data={displayData} onClick={handleMonthClick}>
@@ -251,7 +282,7 @@ function Trends(): JSX.Element {
                   <Legend />
                   <Line
                     type="monotone"
-                    dataKey="total_lines_changed"
+                    dataKey={useWeightedData ? "weighted_lines_changed" : "total_lines_changed"}
                     stroke="#3b82f6"
                     strokeWidth={2}
                     name={perCommitter ? "Lines Changed (per committer)" : "Lines Changed"}
@@ -261,7 +292,7 @@ function Trends(): JSX.Element {
                   />
                   <Line
                     type="monotone"
-                    dataKey="total_lines_added"
+                    dataKey={useWeightedData ? "weighted_lines_added" : "total_lines_added"}
                     stroke="#10b981"
                     strokeWidth={2}
                     name={perCommitter ? "Lines Added (per committer)" : "Lines Added"}
@@ -271,7 +302,7 @@ function Trends(): JSX.Element {
                   />
                   <Line
                     type="monotone"
-                    dataKey="total_lines_deleted"
+                    dataKey={useWeightedData ? "weighted_lines_deleted" : "total_lines_deleted"}
                     stroke="#ef4444"
                     strokeWidth={2}
                     name={perCommitter ? "Lines Deleted (per committer)" : "Lines Deleted"}

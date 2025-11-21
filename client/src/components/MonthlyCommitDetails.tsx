@@ -13,6 +13,7 @@ interface Commit {
   lines_changed: number;
   lines_added: number;
   lines_deleted: number;
+  weight?: number;
 }
 
 interface MonthlyCommitDetailsProps {
@@ -143,6 +144,9 @@ const MonthlyCommitDetails: React.FC<MonthlyCommitDetailsProps> = ({
                 Lines
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                Weight
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Message
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -178,6 +182,19 @@ const MonthlyCommitDetails: React.FC<MonthlyCommitDetailsProps> = ({
                       -{commit.lines_deleted.toLocaleString()}
                     </span>
                   </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                  {commit.weight !== undefined && commit.weight < 100 ? (
+                    <span className={`font-medium ${
+                      commit.weight >= 75 ? 'text-yellow-600 dark:text-yellow-400' :
+                      commit.weight >= 50 ? 'text-orange-600 dark:text-orange-400' :
+                      'text-red-600 dark:text-red-400'
+                    }`}>
+                      {commit.weight}%
+                    </span>
+                  ) : (
+                    <span className="text-gray-400 dark:text-gray-500">100%</span>
+                  )}
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100 max-w-md">
                   <div className="line-clamp-2">{commit.commit_message}</div>

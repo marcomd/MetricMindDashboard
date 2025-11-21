@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Scale } from 'lucide-react';
 import { fetchContributors, fetchRepos, fetchContributorsDateRange } from '../utils/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
@@ -17,8 +18,12 @@ interface Contributor {
   author_name: string;
   author_email: string;
   total_commits: number;
+  effective_commits?: string | number;
+  avg_weight?: string | number;
+  weight_efficiency_pct?: string | number;
   repositories_contributed: number;
   total_lines_changed: string;
+  weighted_lines_changed?: string | number;
   avg_lines_changed_per_commit: number;
 }
 
@@ -37,6 +42,7 @@ function Contributors(): JSX.Element {
   const [dateRange, setDateRange] = useState<DateRange>({ min_date: null, max_date: null });
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
+  const [useWeightedData, setUseWeightedData] = useState<boolean>(true);
 
   // Fetch repos and date range on mount
   useEffect(() => {
@@ -78,7 +84,10 @@ function Contributors(): JSX.Element {
   );
 
   const topThree: Contributor[] = filteredContributors.slice(0, 3);
-  const chartData: Contributor[] = filteredContributors.slice(0, 15);
+  const chartData = filteredContributors.slice(0, 15).map(c => ({
+    ...c,
+    effective_commits: c.effective_commits ? Number(c.effective_commits) / 100 : c.total_commits
+  }));
 
   const barColors: string[] = [
     '#3b82f6', // blue
@@ -182,6 +191,18 @@ function Contributors(): JSX.Element {
             <option value={50}>Top 50</option>
             <option value={100}>Top 100</option>
           </select>
+
+          {/* Use Weighted Data Checkbox */}
+          <label className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-300">
+            <input
+              type="checkbox"
+              checked={useWeightedData}
+              onChange={(e) => setUseWeightedData(e.target.checked)}
+              className="w-4 h-4 text-primary-600 bg-gray-100 border-gray-300 rounded focus:ring-primary-500 focus:ring-2"
+            />
+            <Scale className="w-4 h-4" />
+            <span className="text-sm font-medium whitespace-nowrap">Use Weighted Data</span>
+          </label>
         </div>
       </div>
 
@@ -195,7 +216,11 @@ function Contributors(): JSX.Element {
               <p className="font-bold text-center text-xs sm:text-sm mb-1 line-clamp-1">
                 {topThree[1].author_name}
               </p>
-              <p className="text-xl sm:text-2xl font-bold">{topThree[1].total_commits}</p>
+              <p className="text-xl sm:text-2xl font-bold">
+                {useWeightedData && topThree[1].effective_commits
+                  ? Math.round(Number(topThree[1].effective_commits) / 100)
+                  : topThree[1].total_commits}
+              </p>
               <p className="text-xs opacity-80">commits</p>
             </div>
           </div>
@@ -207,7 +232,11 @@ function Contributors(): JSX.Element {
               <p className="font-bold text-center text-xs sm:text-sm mb-1 line-clamp-1">
                 {topThree[0].author_name}
               </p>
-              <p className="text-2xl sm:text-3xl font-bold">{topThree[0].total_commits}</p>
+              <p className="text-2xl sm:text-3xl font-bold">
+                {useWeightedData && topThree[0].effective_commits
+                  ? Math.round(Number(topThree[0].effective_commits) / 100)
+                  : topThree[0].total_commits}
+              </p>
               <p className="text-xs opacity-80">commits</p>
             </div>
           </div>
@@ -219,7 +248,11 @@ function Contributors(): JSX.Element {
               <p className="font-bold text-center text-xs sm:text-sm mb-1 line-clamp-1">
                 {topThree[2].author_name}
               </p>
-              <p className="text-xl sm:text-2xl font-bold">{topThree[2].total_commits}</p>
+              <p className="text-xl sm:text-2xl font-bold">
+                {useWeightedData && topThree[2].effective_commits
+                  ? Math.round(Number(topThree[2].effective_commits) / 100)
+                  : topThree[2].total_commits}
+              </p>
               <p className="text-xs opacity-80">commits</p>
             </div>
           </div>
@@ -250,7 +283,11 @@ function Contributors(): JSX.Element {
                 boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
               }}
             />
-            <Bar dataKey="total_commits" animationDuration={1000} radius={[0, 8, 8, 0]}>
+            <Bar
+              dataKey={useWeightedData ? "effective_commits" : "total_commits"}
+              animationDuration={1000}
+              radius={[0, 8, 8, 0]}
+            >
               {chartData.map((_entry, index) => (
                 <Cell key={`cell-${index}`} fill={barColors[index % barColors.length]} />
               ))}
@@ -306,13 +343,20 @@ function Contributors(): JSX.Element {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white font-semibold">
-                    {contributor.total_commits.toLocaleString()}
+                    {(useWeightedData && contributor.effective_commits
+                      ? Math.round(Number(contributor.effective_commits) / 100)
+                      : contributor.total_commits
+                    ).toLocaleString()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                     {contributor.repositories_contributed}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                    {parseInt(contributor.total_lines_changed).toLocaleString()}
+                    {Math.round(parseFloat(String(
+                      useWeightedData
+                        ? (contributor.weighted_lines_changed || contributor.total_lines_changed)
+                        : contributor.total_lines_changed
+                    ))).toLocaleString()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                     {Math.round(contributor.avg_lines_changed_per_commit).toLocaleString()}

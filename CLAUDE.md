@@ -82,7 +82,8 @@ npm run preview
 - `client/src/components/` - Reusable components:
   - `Layout.jsx` - Navigation, header, footer, dark mode toggle, user info & logout button
   - `ProtectedRoute.jsx` - Route wrapper requiring authentication
-  - `StatCard.jsx` - Animated metric cards with CountUp, gradient backgrounds, 6 color variants
+  - `StatCard.jsx` - Animated metric cards with CountUp, gradient backgrounds, 6 color variants, weight efficiency display
+  - `WeightBadge.tsx` - Color-coded weight efficiency indicator with tooltip (green/yellow/orange/red)
   - `LoadingSpinner.jsx` - Standard loading indicator
 - `client/src/pages/` - Route components:
   - `Login.jsx` - Google OAuth login page (public)
@@ -152,6 +153,69 @@ Base URL: `/api` (proxies to backend in dev, same origin in production)
 - Fade-in for page loads
 - Stagger animations for list items (50ms delays)
 - Hover scale effects on cards (105%)
+
+**Weight Visualization:**
+- WeightBadge component for efficiency indicators
+- Gradual disclosure: only show when efficiency < 100%
+- Color-coded badges (green/yellow/orange/red) based on weight efficiency
+- Hover tooltips with detailed weight breakdown (total commits, effective commits, discounted)
+- Charts use `weighted_lines_*` fields by default for accurate impact measurement
+- StatCard displays effective commits with weight badges when applicable
+
+## Weight Analysis System
+
+**Commit and Category Weighting**
+
+The system supports commit and category weighting to prioritize meaningful work and accurately measure developer impact:
+
+**Backend Weight Calculation:**
+- Stored in database views and materialized views
+- `effective_commits = SUM(commit_weight * category_weight / 10000)`
+- `weight_efficiency_pct = (effective_commits / total_commits) * 100`
+- `weighted_lines_changed = SUM(lines_changed * commit_weight * category_weight / 10000)`
+
+**Frontend Weight Display:**
+- All charts default to `weighted_lines_changed/added/deleted` fields
+- Weight badges appear when efficiency < 100%
+- WeightBadge component provides visual feedback:
+  - Green (100%): Full weight
+  - Yellow (75-99%): Minor deductions
+  - Orange (50-74%): Significant deductions
+  - Red (<50%): Heavy deductions
+
+**Component Usage:**
+```javascript
+import WeightBadge from '../components/WeightBadge';
+
+<WeightBadge
+  efficiency={85.5}
+  totalCommits={100}
+  effectiveCommits={85.5}
+  size="md"
+  showTooltip={true}
+/>
+```
+
+**Weight Impact Section (Content Analysis):**
+- Appears when overall efficiency < 100% or categories are de-prioritized
+- Overview cards: Overall weight efficiency, effective commits, de-prioritized categories count
+- De-prioritized categories table: Shows category, weight, total vs effective commits, discounted amount
+- Repository weight efficiency chart: Horizontal bar chart comparing efficiency across repositories
+- Only visible when weight analysis is relevant (gradual disclosure pattern)
+
+**Database Fields:**
+All major queries now return weight-related fields when available:
+- `effective_commits` - Weighted commit count (may be fractional)
+- `avg_weight` - Average commit weight (0-100)
+- `weight_efficiency_pct` - Efficiency percentage
+- `weighted_lines_changed/added/deleted` - Weighted line metrics
+- `category_weight` - Category weight configuration (0-100, only in category endpoints)
+
+These fields may be undefined in older data or when weights are not configured. Always handle as optional with appropriate fallbacks:
+```javascript
+const linesChanged = data.weighted_lines_changed || data.total_lines_changed || 0;
+const efficiency = data.weight_efficiency_pct !== undefined ? parseFloat(data.weight_efficiency_pct) : 100;
+```
 
 ## Authentication
 

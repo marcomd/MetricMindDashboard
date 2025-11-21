@@ -5,6 +5,34 @@ All notable changes to Metric Mind Dashboard will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2025-11-21
+
+### Added
+- **Weight Analysis System**: Comprehensive commit and category weighting functionality
+  - Commit weights (0-100): Track reverted commits (0), partial weights (1-99), and full weights (100)
+  - Category weights (0-100): Administrators can de-prioritize entire categories
+  - Weight metrics displayed across all pages: effective_commits, avg_weight, weight_efficiency_pct
+  - WeightBadge component: Color-coded badges (green/yellow/orange/red) with hover tooltips showing detailed weight breakdown
+  - Weight Impact section in Content Analysis page: Shows de-prioritized categories table and repository efficiency comparison chart
+  - Gradual disclosure UI pattern: Weight indicators only appear when efficiency < 100%
+
+### Changed
+- **All charts now display weighted metrics by default**: Charts use weighted_lines_changed, weighted_lines_added, weighted_lines_deleted instead of raw totals
+- **Trends page**: Line and area charts display weighted line metrics, showing accurate impact of commits with reduced weights
+- **Activity page**: Calendar heatmap and timeline use weighted_lines_changed when available
+- **Comparison page**: Bar charts display weighted_lines_changed for accurate cross-repository comparison
+- **Contributors page**: Table shows weighted_lines_changed and weight efficiency metrics
+- **Overview page**: Statistics cards and tables incorporate weight data with effective commits display
+- **Content Analysis page**: Added dedicated Weight Impact section with overview cards, de-prioritized categories analysis, and repository efficiency chart
+
+### Technical Details
+- Updated 12 API endpoints to include weight-related fields: effective_commits, avg_weight, weight_efficiency_pct, weighted_lines_added/deleted/changed
+- TypeScript interfaces updated across all 7 page components to support optional weight fields
+- Created reusable WeightBadge component with size variants (sm, md, lg) and tooltip functionality
+- Enhanced StatCard component to display effective commits and weight badges
+- Database queries now fetch weight columns from PostgreSQL views and materialized views
+- All chart components handle weighted vs unweighted data gracefully with fallback logic
+
 ## [1.0.0] - 2025-11-19
 
 ### Added
@@ -83,6 +111,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version History Summary
 
+- **1.1.0**: Weight analysis system with commit and category weighting
 - **1.0.0**: Production-ready release with TypeScript migration
 - **0.3.0**: Enhanced analytics features and authentication improvements
 - **0.2.0**: Security features and comprehensive testing

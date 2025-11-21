@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { fetchRepos, fetchCategories, fetchCategoryTrends, fetchCategoryByRepo } from '../utils/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import StatCard from '../components/StatCard';
+import WeightBadge from '../components/WeightBadge';
 import {
   PieChart, Pie, Cell,
   BarChart, Bar,
@@ -16,7 +17,11 @@ interface Repository {
 
 interface CategoryData {
   category: string;
+  category_weight?: number;
   total_commits: string;
+  effective_commits?: string | number;
+  avg_weight?: string | number;
+  weight_efficiency_pct?: string | number;
   total_lines_changed: string;
   unique_authors: string;
 }
@@ -26,13 +31,20 @@ interface TrendData {
   month_start_date: string;
   category: string;
   total_commits: string;
+  effective_commits?: string | number;
+  avg_weight?: string | number;
+  weight_efficiency_pct?: string | number;
   total_lines_changed: string;
 }
 
 interface RepoMatrixData {
   repository: string;
   category: string;
+  category_weight?: number;
   total_commits: string;
+  effective_commits?: string | number;
+  avg_weight?: string | number;
+  weight_efficiency_pct?: string | number;
   total_lines_changed: string;
 }
 
@@ -444,6 +456,223 @@ const ContentAnalysis = (): JSX.Element => {
           />
         </div>
       )}
+
+      {/* Weight Impact Section */}
+      {!dataLoading && categoryData.length > 0 && (() => {
+        // Calculate weight impact metrics
+        const totalEffectiveCommits = categoryData.reduce((sum, c) =>
+          sum + parseFloat(String(c.effective_commits || c.total_commits)), 0
+        );
+        const overallEfficiency = totalCommits > 0
+          ? (totalEffectiveCommits / totalCommits) * 100
+          : 100;
+        const deprioritizedCategories = categoryData.filter(c =>
+          c.category_weight !== undefined && c.category_weight < 100
+        );
+
+        // Repository efficiency data from repoMatrixData
+        const repoEfficiencyMap: Record<string, { commits: number; effective: number }> = {};
+        repoMatrixData.forEach(item => {
+          if (!repoEfficiencyMap[item.repository]) {
+            repoEfficiencyMap[item.repository] = { commits: 0, effective: 0 };
+          }
+          repoEfficiencyMap[item.repository].commits += parseInt(String(item.total_commits || 0));
+          repoEfficiencyMap[item.repository].effective += parseFloat(String(item.effective_commits || item.total_commits));
+        });
+
+        const repoEfficiencyData = Object.entries(repoEfficiencyMap).map(([repo, data]) => ({
+          repository: repo,
+          efficiency: data.commits > 0 ? (data.effective / data.commits) * 100 : 100,
+          total_commits: data.commits,
+          effective_commits: data.effective
+        })).sort((a, b) => a.efficiency - b.efficiency);
+
+        return (overallEfficiency < 100 || deprioritizedCategories.length > 0) && (
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                Weight Impact Analysis
+              </h3>
+              <p className="text-gray-600 dark:text-gray-400">
+                Understanding commit prioritization and category weighting effects
+              </p>
+            </div>
+
+            {/* Weight Overview Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              <StatCard
+                title="Overall Weight Efficiency"
+                value={overallEfficiency.toFixed(1)}
+                icon="⚖️"
+                color="indigo"
+                suffix="%"
+              />
+              <StatCard
+                title="Effective Commits"
+                value={totalEffectiveCommits.toFixed(1)}
+                icon="✓"
+                color="green"
+              />
+              <StatCard
+                title="De-prioritized Categories"
+                value={deprioritizedCategories.length}
+                icon="⚠️"
+                color="orange"
+              />
+            </div>
+
+            {/* De-prioritized Categories Table */}
+            {deprioritizedCategories.length > 0 && (
+              <div className="card">
+                <h4 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+                  De-prioritized Categories
+                </h4>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead className="bg-gray-50 dark:bg-gray-800">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Category
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Weight
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Total Commits
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Effective Commits
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Discounted
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Efficiency
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
+                      {deprioritizedCategories.map((cat) => {
+                        const commits = parseInt(String(cat.total_commits));
+                        const effective = parseFloat(String(cat.effective_commits || commits));
+                        const discounted = commits - effective;
+                        const efficiency = parseFloat(String(cat.weight_efficiency_pct || 100));
+
+                        return (
+                          <tr key={cat.category} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex items-center gap-2">
+                                <div
+                                  className="w-3 h-3 rounded-full"
+                                  style={{ backgroundColor: getCategoryColor(cat.category, 0) }}
+                                />
+                                <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                  {cat.category}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                              <span className={`font-medium ${
+                                (cat.category_weight || 100) >= 75 ? 'text-yellow-600 dark:text-yellow-400' :
+                                (cat.category_weight || 100) >= 50 ? 'text-orange-600 dark:text-orange-400' :
+                                'text-red-600 dark:text-red-400'
+                              }`}>
+                                {cat.category_weight}%
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                              {commits.toLocaleString()}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                              {effective.toFixed(1)}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                              {discounted.toFixed(1)}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                              <WeightBadge
+                                efficiency={efficiency}
+                                totalCommits={commits}
+                                effectiveCommits={effective}
+                                size="sm"
+                              />
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Repository Weight Efficiency Comparison */}
+            {repoEfficiencyData.length > 1 && repoEfficiencyData.some(r => r.efficiency < 100) && (
+              <div className="card">
+                <h4 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+                  Repository Weight Efficiency
+                </h4>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={repoEfficiencyData} layout="horizontal">
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis
+                      dataKey="efficiency"
+                      type="number"
+                      domain={[0, 100]}
+                      stroke="#6b7280"
+                      tick={{ fill: '#6b7280' }}
+                      label={{ value: 'Weight Efficiency (%)', position: 'insideBottom', offset: -5 }}
+                    />
+                    <YAxis
+                      dataKey="repository"
+                      type="category"
+                      width={150}
+                      stroke="#6b7280"
+                      tick={{ fill: '#6b7280', fontSize: 12 }}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                        border: 'none',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                      }}
+                      content={({ payload }) => {
+                        if (!payload || !payload[0]) return null;
+                        const data = payload[0].payload;
+                        return (
+                          <div className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+                            <div className="font-semibold text-gray-900 dark:text-white mb-1">
+                              {data.repository}
+                            </div>
+                            <div className="text-sm text-gray-600 dark:text-gray-400">
+                              <div>Efficiency: {data.efficiency.toFixed(1)}%</div>
+                              <div>Total: {data.total_commits.toLocaleString()} commits</div>
+                              <div>Effective: {data.effective_commits.toFixed(1)}</div>
+                            </div>
+                          </div>
+                        );
+                      }}
+                    />
+                    <Bar dataKey="efficiency" animationDuration={1000}>
+                      {repoEfficiencyData.map((entry, index) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={
+                            entry.efficiency >= 75 ? '#eab308' :
+                            entry.efficiency >= 50 ? '#f97316' :
+                            '#ef4444'
+                          }
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Loading State */}
       {dataLoading && (

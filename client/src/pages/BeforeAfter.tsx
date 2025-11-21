@@ -10,6 +10,8 @@ interface Repository {
 
 interface PeriodData {
   avg_commits_per_month: string;
+  avg_effective_commits_per_month?: string;
+  avg_weight?: string;
   avg_lines_per_commit: string;
   avg_authors: string;
   avg_commits_per_committer: string;

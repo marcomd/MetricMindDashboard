@@ -265,6 +265,94 @@ The dashboard includes the following pages:
     3. First uppercase word: `BILLING Implemented feature` → BILLING
     4. If no match: NULL (shown as "UNCATEGORIZED" in UI)
 
+### Weight Analysis System (v1.1.0)
+
+The dashboard includes a comprehensive weight analysis system that allows prioritization and accurate measurement of commit impact by accounting for reverted commits and de-prioritized work categories.
+
+#### Weight Concepts
+
+**Commit Weights (0-100):**
+- **0**: Reverted commits (no lasting impact on codebase)
+- **1-99**: Partially weighted commits (reduced impact, e.g., auto-generated code, refactoring)
+- **100**: Full weight commits (normal, meaningful work)
+
+**Category Weights (0-100):**
+- Administrators can de-prioritize entire categories based on business priorities
+- Applied multiplicatively to commit weights
+- Enables strategic focus on high-priority work areas
+- Example: [MAINTENANCE] category might be weighted at 50% if the focus is on feature development
+
+#### Weight Metrics
+
+The system calculates and displays several weight-related metrics:
+
+- **Effective Commits**: Weighted commit count calculated as `SUM(commit_weight × category_weight) / 10000`
+  - Example: 100 commits with 85% average weight = 85 effective commits
+- **Average Weight**: Mean weight across all commits (0-100 scale)
+- **Weight Efficiency**: Percentage of effective commits vs total commits
+  - Formula: `(effective_commits / total_commits) × 100`
+  - 100% = all commits have full weight
+  - <100% = some commits are weighted down
+- **Weighted Lines**: Line metrics (added/deleted/changed) adjusted by commit weight
+  - Example: 357k lines at 50% weight = 178.5k weighted lines
+
+#### Weight Visualization
+
+**Gradual Disclosure UI Pattern:**
+- Weight indicators only appear when efficiency < 100%
+- Keeps the interface clean when all work has full weight
+- Highlights anomalies and de-prioritized work when present
+
+**WeightBadge Component:**
+Color-coded badges with hover tooltips:
+- 🟢 **Green (100%)**: Full weight - all commits counted
+- 🟡 **Yellow (75-99%)**: Minor deductions - mostly full impact
+- 🟠 **Orange (50-74%)**: Significant deductions - reduced impact
+- 🔴 **Red (<50%)**: Heavy deductions - low impact
+
+**Weight Impact Section (Content Analysis Page):**
+- Overview cards showing overall weight efficiency
+- De-prioritized categories table with detailed breakdown:
+  - Category name and configured weight
+  - Total commits vs effective commits
+  - Discounted commits (commits with reduced weight)
+  - Visual weight efficiency indicators
+- Repository weight efficiency comparison chart
+- Only appears when weight efficiency < 100% or categories are de-prioritized
+
+#### Weighted Data in Charts
+
+**All charts display weighted metrics by default** to provide accurate productivity measurement:
+
+- **Trends Page**: Line and area charts show `weighted_lines_changed`, `weighted_lines_added`, `weighted_lines_deleted`
+  - Example: A commit with 357k lines at 50% weight appears as ~178k lines in the chart
+- **Activity Page**: Calendar heatmap and timeline use weighted line counts
+- **Comparison Page**: Bar charts compare repositories using weighted metrics
+- **Contributors Page**: Tables show weighted lines changed and weight efficiency per contributor
+- **Overview Page**: Statistics cards display both total and effective commits with weight badges
+
+This ensures that:
+- Reverted commits (weight=0) don't inflate productivity metrics
+- De-prioritized categories (e.g., maintenance) don't overshadow strategic work
+- Charts reflect actual business impact, not just volume of changes
+
+#### How the Toggle Works
+
+Users can switch between weighted and unweighted data visualization using the "Use Weighted Data" checkbox available on Trends, Activity, Comparison, and Contributors pages.
+
+**Example: Repository with 10 commits at 50% average weight**
+
+| Toggle State | Commits Display | Lines Display | Use Case |
+|--------------|-----------------|---------------|----------|
+| ✅ Use Weighted Data (default) | **5 effective commits** | **~50% of lines** | Accurate business impact measurement |
+| ❌ Use Weighted Data (unchecked) | **10 total commits** | **100% of lines** | Raw activity comparison |
+
+**Combined with "Per Committer" toggle (Trends page):**
+- ✅ Per Committer + ✅ Weighted → Effective commits per committer
+- ✅ Per Committer + ❌ Weighted → Total commits per committer
+- ❌ Per Committer + ✅ Weighted → Total effective commits
+- ❌ Per Committer + ❌ Weighted → Total commits (raw)
+
 ### API Endpoints
 
 The backend exposes these RESTful endpoints:
@@ -276,6 +364,16 @@ The backend exposes these RESTful endpoints:
 - **POST /auth/logout** - Logout user and clear JWT cookie
 
 **Note:** All `/api/*` endpoints below require authentication (valid JWT token in cookie).
+
+**Weight Analysis Fields (v1.1.0):**
+Most endpoints now return additional weight-related fields when available:
+- `effective_commits` - Weighted commit count (may be fractional)
+- `avg_weight` - Average commit weight (0-100)
+- `weight_efficiency_pct` - Weight efficiency percentage
+- `weighted_lines_added/deleted/changed` - Line metrics adjusted by commit weight
+- `category_weight` - Category weight configuration (0-100, only in category endpoints)
+
+These fields may be `undefined` or `null` in older data or when weights are not configured. Clients should handle these as optional fields with appropriate fallbacks.
 
 #### Repository Management
 - **GET /api/repos** - List all repositories with summary statistics
