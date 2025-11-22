@@ -5,6 +5,43 @@ All notable changes to Metric Mind Dashboard will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2025-01-22
+
+### Added
+- **Personal Performance page**: New dedicated page for individual contributor analytics
+  - Summary stat cards showing total commits, lines changed, repositories contributed, and active days
+  - Team comparison metrics displaying percentage of team commits and lines changed
+  - Interactive charts: Commits over time (area chart) and lines changed/added/deleted over time (line chart)
+  - Repository breakdown table showing contributions per repository with weight metrics
+  - Category breakdown table showing category distribution with weight efficiency indicators
+  - Commit details table with searchable/sortable list of personal commits
+  - Custom date range filters with quick action buttons (Last 30/60/90 days, This year, All time)
+  - Repository filter dropdown (all repos or specific repository)
+  - Weighted vs unweighted data toggle
+  - **Dynamic commit limit selection**: Dropdown to choose between last 50 (default), 100, or 200 commits
+- **Color-coded weight columns** for better visual understanding:
+  - Category Weight column: Red (≤20%), Orange (21-50%), Gray (>50%)
+  - Commit Weight column: Red (≤20%), Orange (21-50%), Gray (>50%)
+- New API endpoint `/api/personal-performance` with comprehensive personal metrics
+- New frontend API client function `fetchPersonalPerformance()` with limit parameter support
+
+### Changed
+- Personal performance queries adapted to work with merged database views from extractor project
+- Navigation menu updated with "My Performance" link (positioned between Contributors and Activity)
+
+### Fixed
+- PostgreSQL numeric types now properly parsed to JavaScript numbers to prevent `.toFixed()` errors
+- Chart data aggregation correctly handles string-to-number conversion for weighted metrics
+- Repository and category breakdown tables handle null/undefined numeric values gracefully
+
+### Technical Details
+- Created comprehensive PersonalPerformance.tsx component with 6 major sections
+- Backend queries leverage personal views: `v_daily_stats_by_author`, `v_category_stats_by_author`, `v_personal_commit_details`
+- All numeric values from PostgreSQL properly converted using `parseFloat()` before operations
+- API endpoint supports dynamic LIMIT parameter (50/100/200) instead of hardcoded value
+- Weight efficiency comparisons and calculations adapted for personal vs team metrics
+- Added `commitLimit` state management with real-time API updates
+
 ## [1.2.0] - 2025-11-21
 
 ### Added
@@ -145,6 +182,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version History Summary
 
+- **1.3.0**: Personal Performance page with individual contributor analytics and UX improvements
 - **1.2.0**: Weighted data toggle, improved category filtering, and UI refinements
 - **1.1.1**: Standardized effective_commits format across endpoints
 - **1.1.0**: Weight analysis system with commit and category weighting

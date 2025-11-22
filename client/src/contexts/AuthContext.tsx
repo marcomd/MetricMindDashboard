@@ -34,6 +34,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, []);
 
   const checkAuthStatus = async (): Promise<void> => {
+    // Bypass authentication in E2E test environment
+    if (import.meta.env.VITE_E2E_TEST === 'true') {
+      setUser({
+        email: 'test@example.com',
+        name: 'Test User',
+        domain: 'example.com'
+      });
+      setAuthenticated(true);
+      setLoading(false);
+      return;
+    }
+
     try {
       const response = await checkAuth();
       if (response.data.authenticated) {

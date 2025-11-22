@@ -123,6 +123,23 @@ export const fetchSummary = (
   return api.get(`/summary${queryString ? '?' + queryString : ''}`);
 };
 
+// Personal performance endpoint
+export const fetchPersonalPerformance = (
+  authorEmail: string,
+  repo: string | null = null,
+  dateFrom: string | null = null,
+  dateTo: string | null = null,
+  limit: number = 50
+): Promise<AxiosResponse> => {
+  const params = new URLSearchParams();
+  params.append('authorEmail', authorEmail);
+  if (repo && repo !== 'all') params.append('repo', repo);
+  if (dateFrom) params.append('dateFrom', dateFrom);
+  if (dateTo) params.append('dateTo', dateTo);
+  params.append('limit', limit.toString());
+  return api.get(`/personal-performance?${params.toString()}`);
+};
+
 // Auth endpoints (proxied to backend by Vite in dev)
 export const checkAuth = (): Promise<AxiosResponse> =>
   axios.get('/auth/check', { withCredentials: true });

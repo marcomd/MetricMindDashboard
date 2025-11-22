@@ -735,4 +735,211 @@ router.get('/summary', async (req: Request, res: Response) => {
   }
 });
 
+// Get personal performance data for logged-in user
+router.get('/personal-performance', async (req: Request, res: Response) => {
+  try {
+    const authorEmail = req.query.authorEmail as string;
+    const dateFrom = req.query.dateFrom;
+    const dateTo = req.query.dateTo;
+    const repo = req.query.repo;
+    const limit = parseInt(req.query.limit as string) || 50;
+
+    if (!authorEmail) {
+      return res.status(400).json({ error: 'authorEmail parameter is required' });
+    }
+
+    const hasRepoFilter = repo && repo !== 'all';
+
+    // 1. Personal Summary Statistics (from commits table with weight > 0 filter)
+    const personalStatsQuery = `
+      SELECT
+        COUNT(c.id)::int as total_commits,
+        COALESCE(SUM(c.weight) / 100, 0)::numeric as effective_commits,
+        COALESCE(ROUND(AVG(c.weight)::numeric, 1), 0) as avg_weight,
+        COALESCE(ROUND((SUM(c.weight) / NULLIF(COUNT(c.id), 0)::numeric), 1), 0) as weight_efficiency_pct,
+        COALESCE(SUM(c.lines_added), 0)::bigint as total_lines_added,
+        COALESCE(SUM(c.lines_deleted), 0)::bigint as total_lines_deleted,
+        COALESCE(SUM(c.lines_added + c.lines_deleted), 0)::bigint as total_lines_changed,
+        COALESCE(SUM((c.lines_added + c.lines_deleted) * c.weight / 100.0), 0)::numeric as weighted_lines_changed,
+        COALESCE(ROUND(AVG(c.lines_added + c.lines_deleted)::numeric, 1), 0) as avg_lines_changed_per_commit,
+        COUNT(DISTINCT c.repository_id)::int as repositories_contributed,
+        COUNT(DISTINCT DATE_TRUNC('day', c.commit_date))::int as active_days
+      FROM commits c
+      ${hasRepoFilter ? 'JOIN repositories r ON c.repository_id = r.id' : ''}
+      WHERE c.author_email = $1
+        AND c.weight > 0
+        ${hasRepoFilter ? `AND r.name = $2` : ''}
+        ${dateFrom ? `AND c.commit_date >= $${hasRepoFilter ? 3 : 2}` : ''}
+        ${dateTo ? `AND c.commit_date <= $${hasRepoFilter ? (dateFrom ? 4 : 3) : (dateFrom ? 3 : 2)}` : ''}
+    `;
+
+    // Build params for personal stats query
+    const personalStatsParams: any[] = [authorEmail];
+    if (hasRepoFilter) personalStatsParams.push(repo);
+    if (dateFrom) personalStatsParams.push(dateFrom);
+    if (dateTo) personalStatsParams.push(dateTo);
+
+    // 2. Daily Activity for Charts (uses v_daily_stats_by_author view)
+    let dailyActivityQuery = `
+      SELECT
+        commit_date,
+        repository_name,
+        total_commits,
+        effective_commits,
+        avg_weight,
+        weight_efficiency_pct,
+        total_lines_added,
+        total_lines_deleted,
+        total_lines_changed,
+        weighted_lines_added,
+        weighted_lines_deleted,
+        weighted_lines_changed
+      FROM v_daily_stats_by_author
+      WHERE author_email = $1
+    `;
+
+    const dailyActivityParams: any[] = [authorEmail];
+    let dailyParamIndex = 2;
+
+    if (hasRepoFilter) {
+      dailyActivityQuery += ` AND repository_name = $${dailyParamIndex}`;
+      dailyActivityParams.push(repo);
+      dailyParamIndex++;
+    }
+    if (dateFrom) {
+      dailyActivityQuery += ` AND commit_date >= $${dailyParamIndex}`;
+      dailyActivityParams.push(dateFrom);
+      dailyParamIndex++;
+    }
+    if (dateTo) {
+      dailyActivityQuery += ` AND commit_date <= $${dailyParamIndex}`;
+      dailyActivityParams.push(dateTo);
+      dailyParamIndex++;
+    }
+
+    dailyActivityQuery += ' ORDER BY commit_date ASC';
+
+    // 3. Repository Breakdown (from commits table with weight > 0 filter)
+    const repoBreakdownQuery = `
+      SELECT
+        r.name as repository_name,
+        COUNT(c.id)::int as total_commits,
+        ROUND((SUM(c.weight) / 100.0)::numeric, 2) as effective_commits,
+        ROUND(AVG(c.weight)::numeric, 1) as avg_weight,
+        ROUND((SUM(c.weight) / NULLIF(COUNT(c.id), 0)::numeric), 1) as weight_efficiency_pct,
+        SUM(c.lines_added + c.lines_deleted)::bigint as total_lines_changed,
+        SUM((c.lines_added + c.lines_deleted) * c.weight / 100.0)::numeric as weighted_lines_changed
+      FROM commits c
+      JOIN repositories r ON c.repository_id = r.id
+      WHERE c.author_email = $1
+        AND c.weight > 0
+        ${dateFrom ? `AND c.commit_date >= $2` : ''}
+        ${dateTo ? `AND c.commit_date <= $${dateFrom ? 3 : 2}` : ''}
+      GROUP BY r.name
+      ORDER BY total_commits DESC
+    `;
+
+    const repoBreakdownParams: any[] = [authorEmail];
+    if (dateFrom) repoBreakdownParams.push(dateFrom);
+    if (dateTo) repoBreakdownParams.push(dateTo);
+
+    // 4. Category Breakdown (uses v_category_stats_by_author view)
+    const categoryBreakdownQuery = `
+      SELECT
+        category,
+        category_weight,
+        total_commits,
+        effective_commits,
+        avg_weight,
+        weight_efficiency_pct,
+        total_lines_changed,
+        weighted_lines_changed
+      FROM v_category_stats_by_author
+      WHERE author_email = $1
+      ORDER BY total_commits DESC
+    `;
+
+    // 5. Commit Details List (uses v_personal_commit_details view)
+    let commitDetailsQuery = `
+      SELECT
+        commit_date,
+        hash as commit_hash,
+        subject as commit_message,
+        author_name,
+        repository_name,
+        category,
+        lines_changed,
+        lines_added,
+        lines_deleted,
+        weight
+      FROM v_personal_commit_details
+      WHERE author_email = $1
+    `;
+
+    const commitDetailsParams: any[] = [authorEmail];
+    let commitParamIndex = 2;
+
+    if (hasRepoFilter) {
+      commitDetailsQuery += ` AND repository_name = $${commitParamIndex}`;
+      commitDetailsParams.push(repo);
+      commitParamIndex++;
+    }
+    if (dateFrom) {
+      commitDetailsQuery += ` AND commit_date >= $${commitParamIndex}`;
+      commitDetailsParams.push(dateFrom);
+      commitParamIndex++;
+    }
+    if (dateTo) {
+      commitDetailsQuery += ` AND commit_date <= $${commitParamIndex}`;
+      commitDetailsParams.push(dateTo);
+      commitParamIndex++;
+    }
+
+    commitDetailsQuery += ` ORDER BY commit_date DESC LIMIT ${limit}`;
+
+    // 6. Team Comparison - Get team totals for comparison (with weight > 0 filter)
+    const teamStatsQuery = `
+      SELECT
+        COUNT(c.id)::int as total_commits,
+        COALESCE(SUM(c.weight) / 100.0, 0)::numeric as effective_commits,
+        COALESCE(ROUND(AVG(c.weight)::numeric, 1), 0) as avg_weight,
+        COALESCE(SUM(c.lines_added + c.lines_deleted), 0)::bigint as total_lines_changed,
+        COUNT(DISTINCT c.author_email)::int as total_contributors
+      FROM commits c
+      ${hasRepoFilter ? 'JOIN repositories r ON c.repository_id = r.id' : ''}
+      WHERE c.weight > 0
+        ${hasRepoFilter ? `AND r.name = $1` : ''}
+        ${dateFrom ? `AND c.commit_date >= $${hasRepoFilter ? 2 : 1}` : ''}
+        ${dateTo ? `AND c.commit_date <= $${hasRepoFilter ? (dateFrom ? 3 : 2) : (dateFrom ? 2 : 1)}` : ''}
+    `;
+
+    const teamStatsParams: any[] = [];
+    if (hasRepoFilter) teamStatsParams.push(repo);
+    if (dateFrom) teamStatsParams.push(dateFrom);
+    if (dateTo) teamStatsParams.push(dateTo);
+
+    // Execute all queries in parallel
+    const [personalStats, dailyActivity, repoBreakdown, categoryBreakdown, commitDetails, teamStats] = await Promise.all([
+      pool.query(personalStatsQuery, personalStatsParams),
+      pool.query(dailyActivityQuery, dailyActivityParams),
+      pool.query(repoBreakdownQuery, repoBreakdownParams),
+      pool.query(categoryBreakdownQuery, [authorEmail]),
+      pool.query(commitDetailsQuery, commitDetailsParams),
+      pool.query(teamStatsQuery, teamStatsParams)
+    ]);
+
+    res.json({
+      personal_stats: personalStats.rows[0],
+      daily_activity: dailyActivity.rows,
+      repository_breakdown: repoBreakdown.rows,
+      category_breakdown: categoryBreakdown.rows,
+      commit_details: commitDetails.rows,
+      team_stats: teamStats.rows[0]
+    });
+  } catch (err) {
+    console.error('Error fetching personal performance:', err);
+    res.status(500).json({ error: 'Failed to fetch personal performance data' });
+  }
+});
+
 export default router;

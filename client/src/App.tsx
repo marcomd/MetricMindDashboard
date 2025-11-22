@@ -8,6 +8,7 @@ import Unauthorized from './pages/Unauthorized';
 import Overview from './pages/Overview';
 import Trends from './pages/Trends';
 import Contributors from './pages/Contributors';
+import PersonalPerformance from './pages/PersonalPerformance';
 import Activity from './pages/Activity';
 import Comparison from './pages/Comparison';
 import BeforeAfter from './pages/BeforeAfter';
@@ -34,6 +35,7 @@ function App(): React.ReactElement {
             <Route index element={<Overview />} />
             <Route path="trends" element={<Trends />} />
             <Route path="contributors" element={<Contributors />} />
+            <Route path="personal-performance" element={<PersonalPerformance />} />
             <Route path="activity" element={<Activity />} />
             <Route path="comparison" element={<Comparison />} />
             <Route path="before-after" element={<BeforeAfter />} />

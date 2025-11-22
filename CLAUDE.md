@@ -57,13 +57,13 @@ npm run preview
 ### Backend Structure
 
 **Server:** Express.js API (ES modules)
-- `server/index.js` - Main server entry point, serves static React build in production
-- `server/db.js` - PostgreSQL connection pool using `pg` library, includes user-related queries
-- `server/routes/api.js` - All API endpoints (repos, trends, contributors, activity, comparison, etc.)
-- `server/routes/auth.js` - Authentication endpoints (Google OAuth, logout, auth check)
-- `server/config/passport.js` - Passport.js Google OAuth2 strategy with domain validation
-- `server/utils/jwt.js` - JWT token generation and verification utilities
-- `server/middleware/auth.js` - Authentication middleware for protecting routes
+- `server/index.ts` - Main server entry point, serves static React build in production
+- `server/db.ts` - PostgreSQL connection pool using `pg` library, includes user-related queries
+- `server/routes/api.ts` - All API endpoints (repos, trends, contributors, activity, comparison, etc.)
+- `server/routes/auth.ts` - Authentication endpoints (Google OAuth, logout, auth check)
+- `server/config/passport.ts` - Passport.ts Google OAuth2 strategy with domain validation
+- `server/utils/jwt.ts` - JWT token generation and verification utilities
+- `server/middleware/auth.ts` - Authentication middleware for protecting routes
 
 **Database:** PostgreSQL with materialized views for performance
 - Raw commit data stored per-repository
@@ -75,27 +75,29 @@ npm run preview
 ### Frontend Structure
 
 **React + Vite Application**
-- `client/src/main.jsx` - Application entry point
-- `client/src/App.jsx` - React Router configuration with AuthProvider and protected routes
+- `client/src/main.tsx` - Application entry point
+- `client/src/App.tsx` - React Router configuration with AuthProvider and protected routes
 - `client/src/contexts/` - React Context providers:
-  - `AuthContext.jsx` - Authentication state management (user, login, logout, auth check)
+  - `AuthContext.tsx` - Authentication state management (user, login, logout, auth check)
 - `client/src/components/` - Reusable components:
-  - `Layout.jsx` - Navigation, header, footer, dark mode toggle, user info & logout button
-  - `ProtectedRoute.jsx` - Route wrapper requiring authentication
-  - `StatCard.jsx` - Animated metric cards with CountUp, gradient backgrounds, 6 color variants, weight efficiency display
+  - `Layout.tsx` - Navigation, header, footer, dark mode toggle, user info & logout button
+  - `ProtectedRoute.tsx` - Route wrapper requiring authentication
+  - `StatCard.tsx` - Animated metric cards with CountUp, gradient backgrounds, 6 color variants, weight efficiency display
   - `WeightBadge.tsx` - Color-coded weight efficiency indicator with tooltip (green/yellow/orange/red)
-  - `LoadingSpinner.jsx` - Standard loading indicator
+  - `LoadingSpinner.tsx` - Standard loading indicator
 - `client/src/pages/` - Route components:
-  - `Login.jsx` - Google OAuth login page (public)
-  - `Unauthorized.jsx` - Access denied page for non-authorized domains (public)
-  - `Overview.jsx` - Repository cards and comparison summary (protected)
-  - `Trends.jsx` - Monthly commit trends with area/line charts (protected)
-  - `Contributors.jsx` - Top contributors with podium, charts, and searchable table (protected)
-  - `Activity.jsx` - Calendar heatmap and daily activity patterns (protected)
-  - `Comparison.jsx` - Side-by-side repository metrics comparison (protected)
-  - `BeforeAfter.jsx` - Before/After analysis with date pickers and quick-action buttons (protected)
-- `client/src/utils/api.js` - Axios API client with all endpoint functions, includes auth endpoints and 401 interceptor
-- `client/src/utils/dateFormat.js` - Date formatting utilities for consistent dd/mm/yyyy display
+  - `Login.tsx` - Google OAuth login page (public)
+  - `Unauthorized.tsx` - Access denied page for non-authorized domains (public)
+  - `Overview.tsx` - Repository cards and comparison summary (protected)
+  - `Trends.tsx` - Monthly commit trends with area/line charts (protected)
+  - `Contributors.tsx` - Top contributors with podium, charts, and searchable table (protected)
+  - `PersonalPerformance.tsx` - Individual contributor analytics with personal metrics, charts, and team comparison (protected)
+  - `Activity.tsx` - Calendar heatmap and daily activity patterns (protected)
+  - `Comparison.tsx` - Side-by-side repository metrics comparison (protected)
+  - `BeforeAfter.tsx` - Before/After analysis with date pickers and quick-action buttons (protected)
+  - `ContentAnalysis.tsx` - Category statistics, trends, and weight impact analysis (protected)
+- `client/src/utils/api.ts` - Axios API client with all endpoint functions, includes auth endpoints and 401 interceptor
+- `client/src/utils/dateFormat.ts` - Date formatting utilities for consistent dd/mm/yyyy display
 
 **Routing Pattern:**
 ```javascript
@@ -107,14 +109,16 @@ npm run preview
 / → Overview
 /trends → Trends
 /contributors → Contributors
+/personal-performance → PersonalPerformance
 /activity → Activity
 /comparison → Comparison
 /before-after → BeforeAfter
+/content-analysis → ContentAnalysis
 ```
 
 ### API Client Pattern
 
-All API calls use the centralized `api.js` utility:
+All API calls use the centralized `api.ts` utility:
 ```javascript
 import { fetchRepos, fetchMonthlyTrends, fetchContributors } from '../utils/api';
 
@@ -227,7 +231,7 @@ The dashboard uses Google OAuth2 for authentication with domain-based access con
 
 **Backend Authentication Flow:**
 1. User clicks "Continue with Google" on login page
-2. Redirected to `/auth/google` (Passport.js OAuth2 strategy)
+2. Redirected to `/auth/google` (Passport.ts OAuth2 strategy)
 3. Google authentication and consent screen
 4. Callback to `/auth/google/callback` with user profile
 5. Domain validation (email domain must match ALLOWED_DOMAINS)
@@ -314,7 +318,7 @@ function MyComponent() {
 
 **Backend - Protect Routes:**
 ```javascript
-import { requireAuth } from '../middleware/auth.js';
+import { requireAuth } from '../middleware/auth.ts';
 
 // Protect individual routes
 router.get('/sensitive-data', requireAuth, (req, res) => {
@@ -368,22 +372,217 @@ ALLOWED_DOMAINS=iubenda.com,team.blue
 
 ## Adding New Pages
 
-1. Create component in `client/src/pages/NewPage.jsx`
+1. Create component in `client/src/pages/NewPage.tsx`
 2. Follow existing page patterns (state, loading, API calls)
-3. Add route in `client/src/App.jsx`:
+3. Add route in `client/src/App.tsx`:
    ```javascript
    import NewPage from './pages/NewPage';
    <Route path="new-page" element={<NewPage />} />
    ```
-4. Add navigation links in `client/src/components/Layout.jsx` (desktop + mobile)
-5. If new API endpoint needed, add to `server/routes/api.js` and `client/src/utils/api.js`
+4. Add navigation links in `client/src/components/Layout.tsx` (desktop + mobile)
+5. If new API endpoint needed, add to `server/routes/api.ts` and `client/src/utils/api.ts`
+
+## Personal Performance Page
+
+### Overview
+
+The Personal Performance page (`/personal-performance`) provides individual contributors with detailed analytics about their own contributions across all repositories. It displays personal metrics, team comparison, activity trends, and commit history.
+
+### Features
+
+#### 1. Filters Section
+- **Date Range Pickers**: From/To date inputs with HTML5 date selectors
+- **Quick Action Buttons**: Pre-set date ranges
+  - Last 30 Days
+  - Last 60 Days
+  - Last 90 Days
+  - This Year
+  - All Time (clears date filters)
+- **Repository Filter**: Dropdown to filter data by specific repository or view all repos combined
+- **Weighted Data Toggle**: Switch between weighted (effective) and unweighted (raw) metrics
+
+#### 2. Summary Statistics Cards (4 cards)
+- **Total Commits**: Count of all commits by the user
+  - Shows effective commits and weight badge if efficiency < 100%
+- **Lines Changed**: Total lines added + deleted
+- **Repositories**: Count of distinct repositories contributed to
+- **Active Days**: Number of unique days with at least one commit
+
+#### 3. Team Comparison Section (3 metrics)
+- **% of Team Commits**: User's commits as percentage of total team commits
+  - Shows ratio: `{user_commits} of {team_commits} total`
+- **% of Team Lines**: User's lines changed as percentage of team total
+  - Shows ratio: `{user_lines} of {team_lines} total`
+- **Team Size**: Total number of active contributors
+
+#### 4. Charts
+
+**Commits Over Time** (AreaChart):
+- X-axis: Date (formatted as dd/mm/yyyy)
+- Y-axis: Number of commits (effective or total based on toggle)
+- Gradient fill under the area curve
+- Daily aggregation of commits
+
+**Lines Changed Over Time** (LineChart):
+- X-axis: Date
+- Y-axis: Number of lines
+- Three lines:
+  - Lines Changed (blue) - Total lines added + deleted
+  - Lines Added (green)
+  - Lines Deleted (red)
+- Uses weighted or unweighted metrics based on toggle
+
+#### 5. Repository Breakdown Table
+
+Columns:
+- **Repository**: Repository name
+- **Commits**: Total commits with weight badge if efficiency < 100%
+- **Lines Changed**: Total lines changed (formatted with locale separators)
+- **Weight**: Average commit weight as percentage
+
+**Color Coding** (Weight column):
+- Red (≤20%): Low priority commits
+- Orange (21-50%): Medium priority commits
+- Gray (>50%): Normal priority commits
+
+#### 6. Category Breakdown Table
+
+Shows user's contribution distribution across commit categories (BILLING, AUTH, etc.).
+
+Columns:
+- **Category**: Category name (or UNCATEGORIZED)
+- **Commits**: Total commits with weight badge if efficiency < 100%
+- **Lines Changed**: Total lines changed
+- **Category Weight**: Category priority percentage
+
+**Color Coding** (Category Weight column):
+- Red (≤20%): De-prioritized category
+- Orange (21-50%): Partially de-prioritized category
+- Gray (>50% or 100%): Normal priority category
+
+#### 7. Commit Details Table
+
+Displays recent commits with configurable limit.
+
+**Dynamic Limit Selection**:
+- Dropdown selector: 50 (default), 100, or 200 commits
+- Title updates dynamically: "Last {limit} commits"
+
+Columns:
+- **Date**: Commit date (dd/mm/yyyy format)
+- **Repository**: Repository name
+- **Message**: Commit subject (truncated to 2 lines with ellipsis)
+  - Shows short hash below message (first 7 characters)
+- **Category**: Commit category or "-" if uncategorized
+- **Lines**: Lines added (+green) / deleted (-red) in stacked format
+- **Weight**: Commit weight percentage
+
+**Color Coding** (Weight column):
+- Red (≤20%): Reverted or very low weight commits
+- Orange (21-50%): Partially weighted commits
+- Gray (>50%): Normal weight commits
+
+### Data Flow
+
+1. **User Authentication**: Retrieves logged-in user's email from `AuthContext`
+2. **API Call**: `fetchPersonalPerformance(userEmail, repo, dateFrom, dateTo, limit)`
+3. **Response Structure**:
+   ```typescript
+   {
+     personal_stats: PersonalStats,
+     daily_activity: DailyActivity[],
+     repository_breakdown: RepoBreakdown[],
+     category_breakdown: CategoryBreakdown[],
+     commit_details: CommitDetail[],
+     team_stats: TeamStats
+   }
+   ```
+4. **Data Processing**:
+   - Aggregates daily activity by date (handles multiple repos per day)
+   - Parses PostgreSQL numeric types to JavaScript numbers
+   - Calculates team comparison percentages
+5. **Re-fetch Triggers**: Changes to `user`, `selectedRepo`, `dateFrom`, `dateTo`, or `commitLimit`
+
+### Database Views Used
+
+- **`v_daily_stats_by_author`**: Daily aggregated statistics per author and repository
+  - Filters: `author_email`, `commit_date`, `repository_name`
+  - Returns: commits, lines, weight metrics per day
+
+- **`v_category_stats_by_author`**: Category breakdown per author
+  - Filters: `author_email`
+  - Returns: category-level aggregations with weight efficiency
+
+- **`v_personal_commit_details`**: Individual commit records
+  - Filters: `author_email`, `commit_date`, `repository_name`
+  - Returns: commit details with hash, message, lines, weight
+  - Limit: Dynamic (50/100/200)
+
+### API Endpoint
+
+**Route**: `GET /api/personal-performance`
+
+**Query Parameters**:
+- `authorEmail` (required): Email address of the user
+- `repo` (optional): Repository name filter (default: all repos)
+- `dateFrom` (optional): Start date in YYYY-MM-DD format
+- `dateTo` (optional): End date in YYYY-MM-DD format
+- `limit` (optional): Number of commits to return (default: 50, options: 50/100/200)
+
+**Response**: JSON object with 6 data sections (see Data Flow above)
+
+### State Management
+
+```typescript
+const [repos, setRepos] = useState<Repository[]>([]);           // Available repositories
+const [selectedRepo, setSelectedRepo] = useState<string>('all'); // Current repo filter
+const [dateFrom, setDateFrom] = useState<string>('');           // Start date (YYYY-MM-DD)
+const [dateTo, setDateTo] = useState<string>('');               // End date (YYYY-MM-DD)
+const [useWeightedData, setUseWeightedData] = useState<boolean>(true); // Toggle weighted metrics
+const [commitLimit, setCommitLimit] = useState<number>(50);     // Commit details limit
+const [loading, setLoading] = useState<boolean>(true);          // Loading state
+const [data, setData] = useState<PerformanceData | null>(null); // API response data
+```
+
+### Key Implementation Details
+
+1. **Numeric Type Handling**: All numeric values from PostgreSQL are parsed with `parseFloat()` to prevent TypeScript errors
+2. **Empty States**: Each section conditionally renders only when data is available
+3. **Loading State**: Shows `LoadingSpinner` component while fetching data
+4. **Responsive Design**: Filters and cards adapt to mobile/tablet/desktop layouts
+5. **Dark Mode**: All components support dark mode with proper color variants
+6. **Weight Badges**: Automatically displayed when efficiency < 100% using gradual disclosure pattern
+
+### Usage Example
+
+```typescript
+// Component usage (automatic via routing)
+<Route path="personal-performance" element={<PersonalPerformance />} />
+
+// API usage
+import { fetchPersonalPerformance } from '../utils/api';
+
+const data = await fetchPersonalPerformance(
+  'user@example.com',  // User email
+  'backend-api',       // Repository filter (or 'all')
+  '2024-01-01',        // Date from
+  '2024-12-31',        // Date to
+  100                  // Commit limit
+);
+```
+
+### Navigation
+
+- **Menu Location**: "My Performance" link in sidebar (between Contributors and Activity)
+- **Icon**: User icon from lucide-react
+- **Access**: Protected route requiring authentication
 
 ## Database Queries
 
-All queries use the PostgreSQL pool from `server/db.js`:
+All queries use the PostgreSQL pool from `server/db.ts`:
 
 ```javascript
-import pool from '../db.js';
+import pool from '../db.ts';
 
 router.get('/endpoint', async (req, res) => {
   try {
@@ -413,7 +612,7 @@ Related views: `v_category_stats`, `v_work_type_stats`, `v_category_by_repo`
 All dates displayed to users should follow the **dd/mm/yyyy** format (e.g., 25/12/2024).
 
 **Utility Functions:**
-Use `client/src/utils/dateFormat.js` for consistent date handling:
+Use `client/src/utils/dateFormat.ts` for consistent date handling:
 
 ```javascript
 import { formatDate, toISOFormat, fromISOFormat, addMonths } from '../utils/dateFormat';
