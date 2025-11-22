@@ -223,21 +223,36 @@ const efficiency = data.weight_efficiency_pct !== undefined ? parseFloat(data.we
 
 ## Authentication
 
-**Google OAuth2 with Domain Restriction**
+**OAuth2 with Linked Accounts (Google & GitHub)**
 
-The dashboard uses Google OAuth2 for authentication with domain-based access control. Only users with email addresses from authorized domains (@iubenda.com, @team.blue) can access the application.
+The dashboard supports authentication via multiple OAuth2 providers (Google and GitHub) with domain-based access control. Only users with email addresses from authorized domains (@iubenda.com, @team.blue) can access the application.
+
+**Account Linking:** A single user account is identified by email address. Users can login with either Google or GitHub, and both providers can be linked to the same account. When a user logs in with a second provider using the same email, that provider ID is added to their existing account.
 
 ### Architecture
 
 **Backend Authentication Flow:**
-1. User clicks "Continue with Google" on login page
-2. Redirected to `/auth/google` (Passport.ts OAuth2 strategy)
-3. Google authentication and consent screen
-4. Callback to `/auth/google/callback` with user profile
+1. User clicks "Continue with Google" or "Continue with GitHub" on login page
+2. Redirected to `/auth/google` or `/auth/github` (Passport.js OAuth2 strategy)
+3. OAuth provider authentication and consent screen
+4. Callback to `/auth/google/callback` or `/auth/github/callback` with user profile
 5. Domain validation (email domain must match ALLOWED_DOMAINS)
-6. If authorized: Create/update user in database, generate JWT token, set httpOnly cookie
+6. If authorized:
+   - Check if user exists by email
+   - If user exists: Update to add new provider ID (link accounts)
+   - If new user: Create new account with provider ID
+   - Generate JWT token, set httpOnly cookie
 7. If unauthorized: Redirect to `/unauthorized` page
 8. Redirect to dashboard home page
+
+**Account Linking Example:**
+- User first logs in with Google → Creates account with `google_id='123'`, `github_id=NULL`
+- Same user later logs in with GitHub → Updates account to `google_id='123'`, `github_id='456'`
+- User can now login with either provider
+
+**Provider-Specific Notes:**
+- **Google:** Requires Google+ API or People API enabled in Google Cloud Console
+- **GitHub:** Requires user's primary email to be public and verified for domain validation
 
 **Frontend Authentication:**
 - `AuthContext` manages authentication state across the app
@@ -254,36 +269,55 @@ The dashboard uses Google OAuth2 for authentication with domain-based access con
 
 ### Database Schema
 
-The `users` table must be created in the extractor project database:
+The `users` table supports linked OAuth accounts. To set up GitHub OAuth support, run the migration script at `migrations/add_github_oauth_support.sql`.
+
+**Users Table Schema:**
 
 ```sql
 CREATE TABLE users (
   id SERIAL PRIMARY KEY,
-  google_id VARCHAR(255) UNIQUE NOT NULL,
+  google_id VARCHAR(255),
+  github_id VARCHAR(255),
   email VARCHAR(255) UNIQUE NOT NULL,
   name VARCHAR(255),
   domain VARCHAR(255) NOT NULL,
+  avatar_url TEXT,
   created_at TIMESTAMP DEFAULT NOW(),
   last_login TIMESTAMP DEFAULT NOW()
 );
 
-CREATE INDEX idx_users_email ON users(email);
+-- Partial unique indexes (allow NULL but enforce uniqueness when present)
+CREATE UNIQUE INDEX idx_users_google_id_unique ON users(google_id) WHERE google_id IS NOT NULL;
+CREATE UNIQUE INDEX idx_users_github_id_unique ON users(github_id) WHERE github_id IS NOT NULL;
+
+-- Regular indexes for lookups
 CREATE INDEX idx_users_google_id ON users(google_id);
+CREATE INDEX idx_users_github_id ON users(github_id);
+CREATE INDEX idx_users_email ON users(email);
 ```
+
+**Schema Design:**
+- **email**: UNIQUE - One account per email address
+- **google_id**: UNIQUE when not null - Each Google ID can only be used once
+- **github_id**: UNIQUE when not null - Each GitHub ID can only be used once
+- **Linked accounts**: Both `google_id` and `github_id` can be populated for the same user
+- **Provider inference**: No separate `provider` field - determined by which ID is populated during login
 
 ### Authentication Endpoints
 
 **Backend Routes:**
 - `GET /auth/google` - Initiates Google OAuth flow
-- `GET /auth/google/callback` - OAuth callback handler
+- `GET /auth/google/callback` - Google OAuth callback handler
+- `GET /auth/github` - Initiates GitHub OAuth flow
+- `GET /auth/github/callback` - GitHub OAuth callback handler
 - `GET /auth/check` - Check authentication status (returns user info if authenticated)
 - `POST /auth/logout` - Logout user (clears cookie)
 
 **All `/api/*` routes are protected** and require valid JWT token in cookie.
 
-### Google Cloud Console Setup
+### OAuth Provider Setup
 
-To enable authentication, you must create OAuth2 credentials:
+**Google Cloud Console Setup:**
 
 1. Go to https://console.cloud.google.com/
 2. Create a new project or select an existing one
@@ -295,7 +329,36 @@ To enable authentication, you must create OAuth2 credentials:
    - Production: `https://yourdomain.com/auth/google/callback`
 7. Copy the **Client ID** and **Client Secret** to your `.env` file
 
+**GitHub Developer Settings Setup:**
+
+1. Go to https://github.com/settings/developers
+2. Click **New OAuth App**
+3. Fill in application details:
+   - **Application name:** Metric Mind Dashboard
+   - **Homepage URL:** `http://localhost:5173` (development) or your production URL
+   - **Authorization callback URL:** `http://localhost:3000/auth/github/callback`
+4. Register the application
+5. Copy the **Client ID** and generate a **Client Secret**
+6. Add both to your `.env` file
+7. **Important:** Users must have their primary email set to public in GitHub settings for authentication to work
+
 ### Using Authentication in Code
+
+**Frontend - Login with Provider:**
+```javascript
+import { useAuth } from '../contexts/AuthContext';
+
+function LoginPage() {
+  const { login } = useAuth();
+
+  return (
+    <div>
+      <button onClick={() => login('google')}>Login with Google</button>
+      <button onClick={() => login('github')}>Login with GitHub</button>
+    </div>
+  );
+}
+```
 
 **Frontend - Check Auth State:**
 ```javascript
@@ -333,7 +396,8 @@ router.get('/sensitive-data', requireAuth, (req, res) => {
 - Cookies are httpOnly (not accessible via JavaScript) and secure in production (HTTPS only)
 - CORS configured to allow credentials from CLIENT_URL only
 - Tokens cannot be invalidated until expiry (consider shorter expiry times for sensitive data)
-- All user passwords are managed by Google OAuth (no password storage in this app)
+- All user passwords are managed by OAuth providers (no password storage in this app)
+- GitHub users must have public email addresses for domain validation to work
 
 ## Environment Variables
 
@@ -359,6 +423,11 @@ CLIENT_URL=http://localhost:5173
 GOOGLE_CLIENT_ID=your_google_client_id_here
 GOOGLE_CLIENT_SECRET=your_google_client_secret_here
 GOOGLE_CALLBACK_URL=http://localhost:3000/auth/google/callback
+
+# GitHub OAuth2
+GITHUB_CLIENT_ID=your_github_client_id_here
+GITHUB_CLIENT_SECRET=your_github_client_secret_here
+GITHUB_CALLBACK_URL=http://localhost:3000/auth/github/callback
 
 # JWT
 JWT_SECRET=your_random_secret_key_change_this_in_production

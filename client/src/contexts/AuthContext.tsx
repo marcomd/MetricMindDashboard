@@ -12,7 +12,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   authenticated: boolean;
-  login: () => void;
+  login: (provider?: 'google' | 'github') => void;
   logout: () => Promise<void>;
   checkAuthStatus: () => Promise<void>;
 }
@@ -64,9 +64,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
-  const login = (): void => {
-    // Redirect to Google OAuth (proxied to backend by Vite in dev)
-    window.location.href = '/auth/google';
+  const login = (provider: 'google' | 'github' = 'google'): void => {
+    // Redirect to OAuth provider (proxied to backend by Vite in dev)
+    window.location.href = `/auth/${provider}`;
   };
 
   const logout = async (): Promise<void> => {

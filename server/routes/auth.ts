@@ -48,6 +48,45 @@ router.get('/google/callback',
 );
 
 /**
+ * GET /auth/github
+ * Initiates GitHub OAuth2 flow
+ */
+router.get('/github', passport.authenticate('github', {
+  scope: ['user:email'],
+  session: false
+}));
+
+/**
+ * GET /auth/github/callback
+ * GitHub OAuth2 callback handler
+ */
+router.get('/github/callback',
+  passport.authenticate('github', {
+    session: false,
+    failureRedirect: '/auth/failure'
+  }),
+  (req: Request, res: Response) => {
+    if (!req.user) {
+      return res.redirect(`${CLIENT_URL}/unauthorized`);
+    }
+
+    // Generate JWT token
+    const token = signToken(req.user as User);
+
+    // Set JWT as httpOnly cookie
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: IS_PRODUCTION, // Only use secure cookies in production (HTTPS)
+      sameSite: IS_PRODUCTION ? 'strict' : 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
+
+    // Redirect to client dashboard
+    res.redirect(CLIENT_URL);
+  }
+);
+
+/**
  * GET /auth/failure
  * Handles authentication failures
  */

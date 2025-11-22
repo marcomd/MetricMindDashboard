@@ -359,7 +359,9 @@ The backend exposes these RESTful endpoints:
 
 #### Authentication (Public)
 - **GET /auth/google** - Initiates Google OAuth2 flow
-- **GET /auth/google/callback** - OAuth callback handler with domain validation
+- **GET /auth/google/callback** - Google OAuth callback handler with domain validation
+- **GET /auth/github** - Initiates GitHub OAuth2 flow
+- **GET /auth/github/callback** - GitHub OAuth callback handler with domain validation
 - **GET /auth/check** - Check authentication status and return user info
 - **POST /auth/logout** - Logout user and clear JWT cookie
 
@@ -510,12 +512,13 @@ Categorization creates these views:
 
 ### Authentication
 
-**Google OAuth2 with Domain Restriction**
+**OAuth2 with Multiple Providers (Google & GitHub)**
 
-The dashboard requires authentication via Google OAuth2. Only users with email addresses from authorized domains can access the application.
+The dashboard requires authentication via OAuth2. Only users with email addresses from authorized domains can access the application. Users can sign in using either Google or GitHub accounts, and both providers can be linked to the same account.
 
 **Features:**
-- Google OAuth2 single sign-on
+- Multiple OAuth2 providers (Google and GitHub)
+- **Linked accounts**: Same email address can use both Google and GitHub to login
 - Domain-based access control (@iubenda.com, @team.blue)
 - JWT token authentication with httpOnly cookies
 - User avatar display in header
@@ -523,20 +526,42 @@ The dashboard requires authentication via Google OAuth2. Only users with email a
 - Secure logout functionality
 
 **Required OAuth Environment Variables:**
+
+*Google OAuth:*
 - `GOOGLE_CLIENT_ID` - Google OAuth2 Client ID
 - `GOOGLE_CLIENT_SECRET` - Google OAuth2 Client Secret
 - `GOOGLE_CALLBACK_URL` - OAuth callback URL (e.g., http://localhost:3000/auth/google/callback)
+
+*GitHub OAuth:*
+- `GITHUB_CLIENT_ID` - GitHub OAuth App Client ID
+- `GITHUB_CLIENT_SECRET` - GitHub OAuth App Client Secret
+- `GITHUB_CALLBACK_URL` - OAuth callback URL (e.g., http://localhost:3000/auth/github/callback)
+
+*Common:*
 - `JWT_SECRET` - Secret key for JWT signing (use `openssl rand -base64 32` to generate)
 - `JWT_EXPIRES_IN` - JWT expiration time (default: 7d)
 - `ALLOWED_DOMAINS` - Comma-separated list of allowed email domains
 - `CLIENT_URL` - Frontend URL (default: http://localhost:5173)
 
 **Setup Instructions:**
-1. Create OAuth2 credentials in Google Cloud Console
+
+*Google OAuth:*
+1. Create OAuth2 credentials in [Google Cloud Console](https://console.cloud.google.com/)
 2. Enable Google+ API or People API
 3. Add authorized redirect URIs (development and production)
-4. Configure environment variables in `.env` file
-5. Create `users` table in PostgreSQL database (see CLAUDE.md for schema)
+4. Copy Client ID and Client Secret to `.env` file
+
+*GitHub OAuth:*
+1. Create OAuth App in [GitHub Developer Settings](https://github.com/settings/developers)
+2. Set Homepage URL (e.g., http://localhost:5173)
+3. Set Authorization callback URL (e.g., http://localhost:3000/auth/github/callback)
+4. Copy Client ID and Client Secret to `.env` file
+5. **Important:** Ensure your GitHub email is verified and set to public for domain validation
+
+*Database:*
+- Run the migration script: `migrations/add_github_oauth_support.sql`
+- This adds support for linked OAuth accounts (same email can login with both providers)
+- Migration adds GitHub OAuth support and enables account linking
 
 For detailed authentication documentation, see [CLAUDE.md](./CLAUDE.md).
 

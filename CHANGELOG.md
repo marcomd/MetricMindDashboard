@@ -5,6 +5,31 @@ All notable changes to Metric Mind Dashboard will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2025-11-22
+
+### Added
+- **GitHub OAuth2 authentication support**: Users can now sign in with GitHub in addition to Google
+  - "Continue with GitHub" button on login page
+  - GitHub OAuth strategy with domain validation
+  - New authentication routes: `/auth/github` and `/auth/github/callback`
+- **Linked account support**: Same email address can login with both Google and GitHub
+  - User accounts identified by email, not provider
+  - Both `google_id` and `github_id` can be linked to single account
+  - Automatic account linking when logging in with second provider
+
+### Changed
+- **Database query optimization**: Updated authentication queries to use provider-specific ID columns directly
+  - `findUserByProviderId()` now checks appropriate column based on provider
+  - New `findUserByEmail()` helper function for account lookup
+  - `upsertUser()` rewritten to support account linking via email matching
+
+### Technical Details
+- Added partial unique indexes on `google_id` and `github_id` (UNIQUE when NOT NULL)
+- Installed `passport-github2` package for GitHub OAuth strategy
+- Updated TypeScript interfaces across `server/db.ts`, `server/config/passport.ts`, and `server/routes/auth.ts`
+- Enhanced `AuthContext.tsx` to accept provider parameter: `login('google')` or `login('github')`
+- Updated all authentication documentation in README.md and CLAUDE.md
+
 ## [1.3.0] - 2025-01-22
 
 ### Added
@@ -182,6 +207,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version History Summary
 
+- **1.4.0**: GitHub OAuth support with linked accounts and simplified schema
 - **1.3.0**: Personal Performance page with individual contributor analytics and UX improvements
 - **1.2.0**: Weighted data toggle, improved category filtering, and UI refinements
 - **1.1.1**: Standardized effective_commits format across endpoints
