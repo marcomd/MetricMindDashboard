@@ -147,4 +147,13 @@ export const checkAuth = (): Promise<AxiosResponse> =>
 export const logout = (): Promise<AxiosResponse> =>
   axios.post('/auth/logout', {}, { withCredentials: true });
 
+
+// Commit endpoints
+export const searchCommits = (params: any): Promise<AxiosResponse> =>
+  api.get('/commits', { params });
+
+export const updateCommit = (hash: string, data: any): Promise<AxiosResponse> =>
+  api.put(`/commits/${hash}`, data);
+
 export default api;
+

@@ -5,6 +5,29 @@ All notable changes to Metric Mind Dashboard will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2025-11-23
+
+### Added
+- **Commit Search & Management**: New dedicated page for searching and managing commits
+  - Advanced filters: Repository, Author, Date Range, and Commit Hash
+  - Interactive results table with sortable columns and weight indicators
+  - Edit functionality for commit details (Subject, Category, Weight, AI Tools)
+  - **Access Control**: Edit permissions restricted to commit authors
+- **AI Tools Tracking**: New `ai_tools` field in database and UI to track AI assistance per commit
+- **Enhanced UI**: Improved input field styling and accessibility across the application
+
+### Changed
+- **Database Schema**: Added `ai_tools` column to `commits` table
+- **API Enhancements**:
+  - New `GET /api/commits` endpoint with comprehensive filtering
+  - New `PUT /api/commits/:hash` endpoint for updating commit metadata
+- **Navigation**: Added "Search Commits" to the main sidebar menu
+
+### Technical Details
+- Implemented `CommitSearch` page with React and Tailwind CSS
+- Created server-side tests for new commit endpoints
+- Added E2E tests using Playwright for search and edit flows
+
 ## [1.5.0] - 2025-11-23
 
 ### Added
@@ -237,6 +260,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version History Summary
 
+- **1.6.0**: Commit Search & Management with AI tools tracking and edit capabilities
 - **1.5.0**: GitLab OAuth support with multi-provider linked accounts and self-hosted GitLab support
 - **1.4.0**: GitHub OAuth support with linked accounts and simplified schema
 - **1.3.0**: Personal Performance page with individual contributor analytics and UX improvements

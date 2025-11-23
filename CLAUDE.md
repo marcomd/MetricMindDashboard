@@ -96,6 +96,7 @@ npm run preview
   - `Comparison.tsx` - Side-by-side repository metrics comparison (protected)
   - `BeforeAfter.tsx` - Before/After analysis with date pickers and quick-action buttons (protected)
   - `ContentAnalysis.tsx` - Category statistics, trends, and weight impact analysis (protected)
+  - `CommitSearch.tsx` - Search and manage commits with filters and edit capabilities (protected)
 - `client/src/utils/api.ts` - Axios API client with all endpoint functions, includes auth endpoints and 401 interceptor
 - `client/src/utils/dateFormat.ts` - Date formatting utilities for consistent dd/mm/yyyy display
 
@@ -114,6 +115,7 @@ npm run preview
 /comparison → Comparison
 /before-after → BeforeAfter
 /content-analysis → ContentAnalysis
+/commits → CommitSearch
 ```
 
 ### API Client Pattern

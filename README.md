@@ -265,6 +265,20 @@ The dashboard includes the following pages:
     3. First uppercase word: `BILLING Implemented feature` → BILLING
     4. If no match: NULL (shown as "UNCATEGORIZED" in UI)
 
+8. **Commit Search Page** (`/commits`)
+  - **Purpose**: Search and manage individual commits
+  - **Key Components**:
+    - Advanced search filters (Repository, Author, Date Range, Hash)
+    - Interactive results table with sortable columns
+    - **Weight Indicator**: Visual display of commit weight
+    - **Edit Modal**: Modify commit subject, category, weight, and AI tools
+  - **Access Control**:
+    - Edit functionality restricted to commit authors
+  - **User Experience**:
+    - Quickly find specific commits
+    - Correct metadata (categories, weights) directly from the UI
+    - Track AI tool usage per commit
+
 ### Weight Analysis System (v1.1.0)
 
 The dashboard includes a comprehensive weight analysis system that allows prioritization and accurate measurement of commit impact by accounting for reverted commits and de-prioritized work categories.

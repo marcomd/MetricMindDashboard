@@ -13,6 +13,8 @@ import Activity from './pages/Activity';
 import Comparison from './pages/Comparison';
 import BeforeAfter from './pages/BeforeAfter';
 import ContentAnalysis from './pages/ContentAnalysis';
+import CommitSearch from './pages/CommitSearch';
+
 
 function App(): React.ReactElement {
   return (
@@ -40,7 +42,9 @@ function App(): React.ReactElement {
             <Route path="comparison" element={<Comparison />} />
             <Route path="before-after" element={<BeforeAfter />} />
             <Route path="content-analysis" element={<ContentAnalysis />} />
+            <Route path="commits" element={<CommitSearch />} />
           </Route>
+
         </Routes>
       </AuthProvider>
     </Router>

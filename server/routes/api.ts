@@ -942,4 +942,106 @@ router.get('/personal-performance', async (req: Request, res: Response) => {
   }
 });
 
+
+// Search commits with filters
+router.get('/commits', async (req: Request, res: Response) => {
+  try {
+    const { repo, author, dateFrom, dateTo, hash, limit = 50, offset = 0 } = req.query;
+
+    let query = `
+      SELECT
+        c.id,
+        c.hash,
+        c.subject,
+        c.author_name,
+        c.author_email,
+        c.commit_date,
+        c.category,
+        c.weight,
+        c.ai_tools,
+        c.lines_added,
+        c.lines_deleted,
+        r.name as repository_name
+      FROM commits c
+      JOIN repositories r ON c.repository_id = r.id
+    `;
+
+    const conditions: string[] = [];
+    const params: any[] = [];
+    let paramIndex = 1;
+
+    if (repo && repo !== 'all') {
+      conditions.push(`r.name = $${paramIndex}`);
+      params.push(repo);
+      paramIndex++;
+    }
+
+    if (author) {
+      conditions.push(`c.author_name ILIKE $${paramIndex}`);
+      params.push(`%${author}%`);
+      paramIndex++;
+    }
+
+    if (dateFrom) {
+      conditions.push(`c.commit_date >= $${paramIndex}`);
+      params.push(dateFrom);
+      paramIndex++;
+    }
+
+    if (dateTo) {
+      conditions.push(`c.commit_date <= $${paramIndex}`);
+      params.push(dateTo);
+      paramIndex++;
+    }
+
+    if (hash) {
+      conditions.push(`c.hash ILIKE $${paramIndex}`);
+      params.push(`%${hash}%`);
+      paramIndex++;
+    }
+
+    if (conditions.length > 0) {
+      query += ' WHERE ' + conditions.join(' AND ');
+    }
+
+    query += ` ORDER BY c.commit_date DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+    params.push(limit, offset);
+
+    const result = await pool.query(query, params);
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error searching commits:', err);
+    res.status(500).json({ error: 'Failed to search commits' });
+  }
+});
+
+// Update commit details
+router.put('/commits/:hash', async (req: Request, res: Response) => {
+  try {
+    const { hash } = req.params;
+    const { subject, category, weight, ai_tools } = req.body;
+
+    const result = await pool.query(
+      `UPDATE commits
+       SET subject = COALESCE($1, subject),
+           category = COALESCE($2, category),
+           weight = COALESCE($3, weight),
+           ai_tools = COALESCE($4, ai_tools)
+       WHERE hash = $5
+       RETURNING *`,
+      [subject, category, weight, ai_tools, hash]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Commit not found' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('Error updating commit:', err);
+    res.status(500).json({ error: 'Failed to update commit' });
+  }
+});
+
 export default router;
+

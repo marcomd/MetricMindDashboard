@@ -18,8 +18,10 @@ import {
   ChevronRight,
   Menu,
   X,
-  BarChart3
+  BarChart3,
+  Search
 } from 'lucide-react';
+
 
 interface NavItem {
   path: string;
@@ -81,7 +83,9 @@ const Layout: React.FC = () => {
     { path: '/activity', label: 'Activity', icon: Calendar },
     { path: '/content-analysis', label: 'Content', icon: FileText },
     { path: '/comparison', label: 'Comparison', icon: GitCompareArrows },
+    { path: '/commits', label: 'Search Commits', icon: Search },
   ];
+
 
   return (
     <div className={darkMode ? 'dark' : ''}>
