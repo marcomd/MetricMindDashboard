@@ -7,6 +7,7 @@ import passport from './config/passport.js';
 import apiRoutes from './routes/api.js';
 import authRoutes from './routes/auth.js';
 import { requireAuth } from './middleware/auth.js';
+import { migrationRunner } from './utils/migrationRunner.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -42,9 +43,31 @@ if (process.env.NODE_ENV === 'production') {
   });
 }
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`🚀 API server running on port ${PORT}`);
-  console.log(`📊 Dashboard API: http://localhost:${PORT}/api`);
-  console.log(`💚 Health check: http://localhost:${PORT}/health`);
-});
+// Start server with migrations
+async function startServer() {
+  try {
+    // Run database migrations before starting server
+    console.log('🔄 Running database migrations...');
+    const appliedCount = await migrationRunner.runPending();
+
+    if (appliedCount > 0) {
+      console.log(`✅ Applied ${appliedCount} migration(s)`);
+    } else {
+      console.log('✅ Database schema is up to date');
+    }
+
+    // Start HTTP server
+    app.listen(PORT, () => {
+      console.log(`🚀 API server running on port ${PORT}`);
+      console.log(`📊 Dashboard API: http://localhost:${PORT}/api`);
+      console.log(`💚 Health check: http://localhost:${PORT}/health`);
+    });
+  } catch (error) {
+    console.error('❌ Failed to start server:', error);
+    console.error('Migration error - server will not start');
+    process.exit(1);
+  }
+}
+
+// Start the server
+startServer();

@@ -5,6 +5,41 @@ All notable changes to Metric Mind Dashboard will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.0] - 2025-11-23
+
+### Added
+- **Automated Database Migration System**: Comprehensive migration infrastructure for managing schema changes
+  - Migration runner utility (`server/utils/migrationRunner.ts`) with automatic execution on server startup
+  - Timestamp-based migration naming convention (YYYYMMDDHHMMSS_description.sql) to avoid conflicts
+  - Rollback support with `.down.sql` files for all migrations
+  - Migration tracking using existing `schema_migrations` table (shared with extractor project)
+  - NPM scripts for migration management:
+    - `npm run migrate` - Apply pending migrations
+    - `npm run migrate:status` - Show migration status
+    - `npm run migrate:rollback` - Rollback last migration
+    - `npm run migrate:create <name>` - Generate new migration templates
+  - Transaction-wrapped execution for data integrity
+  - Fail-fast approach preventing server startup with stale schema
+
+### Changed
+- **Migration Files**: Renamed existing migrations to timestamp format:
+  - `20251122120000_add_github_oauth_support.sql` (previously add_github_oauth_support.sql)
+  - `20251122140000_add_gitlab_oauth_support.sql` (previously add_gitlab_oauth_support.sql)
+- **Server Startup**: Server now checks for and applies pending migrations before starting HTTP server
+- **Migration Compatibility**: Migration runner adapted to use `filename` column (matches extractor project schema)
+- **Idempotent Migrations**: Added `IF NOT EXISTS` clauses to all index creation statements
+
+### Technical Details
+- Created MigrationRunner class with methods for applying, rolling back, and checking migration status
+- Migrations automatically execute on server startup with clear console logging
+- Migrations from both dashboard and extractor projects tracked in single `schema_migrations` table
+- Comprehensive documentation added to CLAUDE.md covering:
+  - Migration architecture and naming conventions
+  - Step-by-step guide for creating new migrations
+  - Best practices and troubleshooting guide
+  - Example migration workflows
+- Server integration ensures database schema is up-to-date before accepting requests
+
 ## [1.6.0] - 2025-11-23
 
 ### Added
@@ -260,6 +295,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version History Summary
 
+- **1.7.0**: Automated database migration system with timestamp-based naming and rollback support
 - **1.6.0**: Commit Search & Management with AI tools tracking and edit capabilities
 - **1.5.0**: GitLab OAuth support with multi-provider linked accounts and self-hosted GitLab support
 - **1.4.0**: GitHub OAuth support with linked accounts and simplified schema

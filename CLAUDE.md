@@ -427,6 +427,255 @@ router.get('/sensitive-data', requireAuth, (req, res) => {
 - All user passwords are managed by OAuth providers (no password storage in this app)
 - GitHub users must have public email addresses for domain validation to work
 
+## Database Migrations
+
+### Overview
+
+The dashboard uses an automated database migration system that:
+- Uses the existing `schema_migrations` table created by the extractor project
+- Applies dashboard-specific migrations automatically on server startup
+- Tracks applied migrations to prevent duplicate execution
+- Supports rollback with `.down.sql` files
+- Uses timestamp-based naming to avoid conflicts between projects
+
+### Architecture
+
+**Two-Project Setup:**
+- **Extractor Project**: Owns the core database schema (tables, views, materialized views)
+  - Creates and manages the `schema_migrations` table
+  - Applies migrations for commit data, analytics views, etc.
+- **Dashboard Project**: Extends the schema for authentication and UI features
+  - Reads from the shared `schema_migrations` table
+  - Applies its own migrations (e.g., OAuth providers)
+  - Auto-runs migrations on server startup
+
+**Migration Tracking:**
+All migrations (from both projects) are recorded in the `schema_migrations` table:
+```sql
+CREATE TABLE schema_migrations (
+  filename TEXT PRIMARY KEY
+);
+```
+Note: The extractor project creates this table with a simple structure using `filename` as the primary key.
+
+### Migration Naming Convention
+
+**Format:** `YYYYMMDDHHMMSS_description.sql`
+
+**Examples:**
+- `20251122120000_add_github_oauth_support.sql`
+- `20251122140000_add_gitlab_oauth_support.sql`
+- `20251123093000_add_user_preferences.sql`
+
+**Timestamp Format:**
+- `YYYY` = Year (4 digits)
+- `MM` = Month (2 digits)
+- `DD` = Day (2 digits)
+- `HH` = Hour (2 digits, 24-hour format)
+- `MM` = Minute (2 digits)
+- `SS` = Second (2 digits)
+
+**Why Timestamps?**
+- Multiple projects can create migrations independently without number conflicts
+- Natural chronological ordering
+- Standard practice in many migration frameworks (Rails, Laravel, etc.)
+
+### Available Commands
+
+```bash
+# Run pending migrations manually (also runs automatically on server startup)
+npm run migrate
+
+# Rollback the last applied migration
+npm run migrate:rollback
+
+# Show migration status (applied and pending)
+npm run migrate:status
+
+# Create a new migration template
+npm run migrate:create <name>
+# Example: npm run migrate:create add_user_preferences
+# Creates: migrations/20251123093000_add_user_preferences.sql
+#      and migrations/20251123093000_add_user_preferences.down.sql
+```
+
+### Automatic Migration on Startup
+
+Migrations run automatically when the server starts:
+
+1. Server checks for pending migrations
+2. Applies them in timestamp order
+3. Records each in `schema_migrations` table
+4. Logs results to console
+5. Fails fast if migration errors occur (prevents server start with stale schema)
+
+**Example Output:**
+```
+🔄 Running database migrations...
+✓ Applied migration: 20241201120000_add_github_oauth_support.sql
+✓ Applied migration: 20241215140000_add_gitlab_oauth_support.sql
+✅ Applied 2 migration(s)
+🚀 API server running on port 3000
+```
+
+### Creating New Migrations
+
+#### Step 1: Generate Migration Files
+
+```bash
+npm run migrate:create add_user_preferences
+```
+
+This creates two files:
+- `migrations/20250123093000_add_user_preferences.sql` (up migration)
+- `migrations/20250123093000_add_user_preferences.down.sql` (down migration)
+
+#### Step 2: Write Migration SQL
+
+**Up Migration** (`20250123093000_add_user_preferences.sql`):
+```sql
+-- Migration: Add user preferences
+-- This migration adds a preferences column to store user settings
+
+ALTER TABLE users
+  ADD COLUMN IF NOT EXISTS preferences JSONB DEFAULT '{}';
+
+CREATE INDEX idx_users_preferences ON users USING GIN (preferences);
+```
+
+**Down Migration** (`20250123093000_add_user_preferences.down.sql`):
+```sql
+-- Rollback: Add user preferences
+-- This migration reverses the user preferences changes
+
+DROP INDEX IF EXISTS idx_users_preferences;
+
+ALTER TABLE users DROP COLUMN IF EXISTS preferences;
+```
+
+#### Step 3: Test Migration
+
+```bash
+# Check status before applying
+npm run migrate:status
+
+# Apply the migration
+npm run migrate
+
+# Test rollback (optional)
+npm run migrate:rollback
+
+# Re-apply if needed
+npm run migrate
+```
+
+#### Step 4: Commit to Repository
+
+```bash
+git add migrations/20250123093000_add_user_preferences.sql
+git add migrations/20250123093000_add_user_preferences.down.sql
+git commit -m "Add user preferences migration"
+```
+
+### Migration Best Practices
+
+1. **Idempotent Operations**: Use `IF EXISTS` / `IF NOT EXISTS` to make migrations safe to re-run
+   ```sql
+   ALTER TABLE users ADD COLUMN IF NOT EXISTS preferences JSONB;
+   DROP INDEX IF EXISTS idx_users_preferences;
+   ```
+
+2. **Transaction Safety**: Migrations are automatically wrapped in transactions
+   - If any statement fails, the entire migration is rolled back
+   - Database remains in a consistent state
+
+3. **Always Create Down Migrations**: Every `.sql` file should have a corresponding `.down.sql`
+   - Allows rollback in case of issues
+   - Documents how to reverse changes
+
+4. **Test Rollbacks**: Test the down migration before deploying
+   ```bash
+   npm run migrate              # Apply migration
+   npm run migrate:rollback     # Test rollback
+   npm run migrate              # Re-apply
+   ```
+
+5. **Small, Focused Migrations**: One logical change per migration
+   - ✅ Good: `add_github_oauth_support.sql` (one feature)
+   - ❌ Bad: `update_schema.sql` (vague, multiple changes)
+
+6. **Don't Modify Applied Migrations**: Once a migration is applied (especially in production), never modify it
+   - Create a new migration to make additional changes
+   - The `schema_migrations` table tracks by filename
+
+7. **Coordinate with Extractor Project**: When adding dashboard migrations, ensure they don't conflict with extractor schema changes
+   - Dashboard migrations should only touch `users` table and dashboard-specific tables
+   - Core analytics schema is managed by extractor project
+
+### Migration File Structure
+
+```
+migrations/
+├── 20241201120000_add_github_oauth_support.sql       # Up migration
+├── 20241201120000_add_github_oauth_support.down.sql  # Rollback
+├── 20241215140000_add_gitlab_oauth_support.sql       # Up migration
+├── 20241215140000_add_gitlab_oauth_support.down.sql  # Rollback
+└── 20250123093000_add_user_preferences.sql           # Future migration
+    └── 20250123093000_add_user_preferences.down.sql  # Future rollback
+```
+
+### Troubleshooting
+
+**Problem: Migration fails on startup**
+```
+❌ Failed to start server: Error: migration failed
+Migration error - server will not start
+```
+**Solution:**
+1. Check the migration SQL for syntax errors
+2. Ensure database connection is configured correctly
+3. Check PostgreSQL logs for detailed error messages
+4. Fix the migration file and restart the server
+
+**Problem: Migration marked as applied but didn't complete**
+**Solution:**
+```bash
+# Remove the migration from tracking table
+psql -d git_analytics -c "DELETE FROM schema_migrations WHERE name = '20250123093000_add_user_preferences.sql';"
+
+# Re-run migrations
+npm run migrate
+```
+
+**Problem: Need to skip a migration**
+**Solution:**
+```bash
+# Mark migration as applied without running it
+psql -d git_analytics -c "INSERT INTO schema_migrations (name) VALUES ('20250123093000_add_user_preferences.sql');"
+```
+
+**Problem: Migrations from both projects conflict**
+**Solution:**
+- Dashboard migrations should only touch dashboard-specific tables (`users`, etc.)
+- Coordinate with extractor project maintainer if core schema changes are needed
+- Use timestamp-based naming to ensure proper ordering
+
+### Implementation Details
+
+**Migration Runner:** `server/utils/migrationRunner.ts`
+- Reads migration files from `migrations/` directory
+- Queries `schema_migrations` table for applied migrations
+- Filters pending migrations by comparing filenames
+- Sorts by timestamp prefix for chronological execution
+- Executes each migration in a transaction
+- Records successful migrations in `schema_migrations`
+
+**Server Integration:** `server/index.ts`
+- Imports `migrationRunner` utility
+- Runs `migrationRunner.runPending()` before starting HTTP server
+- Logs migration status to console
+- Exits with error code 1 if migrations fail
+
 ## Environment Variables
 
 Create a `.env` file in the root directory:

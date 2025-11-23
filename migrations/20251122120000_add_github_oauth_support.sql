@@ -24,20 +24,21 @@ DROP INDEX IF EXISTS idx_users_google_id;
 DROP INDEX IF EXISTS idx_users_github_id;
 DROP INDEX IF EXISTS idx_users_google_id_unique;
 DROP INDEX IF EXISTS idx_users_github_id_unique;
+DROP INDEX IF EXISTS idx_users_email;
 
 -- Create partial unique indexes (UNIQUE when NOT NULL)
-CREATE UNIQUE INDEX idx_users_google_id_unique
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_id_unique
   ON users(google_id)
   WHERE google_id IS NOT NULL;
 
-CREATE UNIQUE INDEX idx_users_github_id_unique
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_github_id_unique
   ON users(github_id)
   WHERE github_id IS NOT NULL;
 
 -- Step 5: Add regular indexes for fast lookups (non-unique, for performance)
-CREATE INDEX idx_users_google_id ON users(google_id);
-CREATE INDEX idx_users_github_id ON users(github_id);
-CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id);
+CREATE INDEX IF NOT EXISTS idx_users_github_id ON users(github_id);
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 
 -- Schema Design Notes:
 -- =====================

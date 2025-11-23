@@ -488,6 +488,70 @@ Categorization creates these views:
 - `v_category_work_type_matrix` - Category + work type combinations
 - `v_uncategorized_commits` - Commits needing categorization
 
+### Database Migrations
+
+The dashboard uses an **automated migration system** that manages database schema changes:
+
+**Key Features:**
+- ✅ **Automatic execution** on server startup (no manual intervention required)
+- ✅ **Timestamp-based naming** (YYYYMMDDHHMMSS_description.sql) prevents conflicts
+- ✅ **Rollback support** with `.down.sql` files
+- ✅ **Shared migration tracking** with extractor project via `schema_migrations` table
+- ✅ **Transaction safety** - all migrations wrapped in transactions
+- ✅ **Fail-fast** - server won't start if migrations fail
+
+**Migration Commands:**
+```bash
+# View migration status (applied and pending)
+npm run migrate:status
+
+# Apply pending migrations manually
+npm run migrate
+
+# Rollback last migration
+npm run migrate:rollback
+
+# Create new migration template
+npm run migrate:create add_feature_name
+```
+
+**How It Works:**
+1. Server checks for pending migrations on startup
+2. Applies them in timestamp order
+3. Records each in `schema_migrations` table
+4. Logs results to console
+5. Only then starts the HTTP server
+
+**Example Server Startup:**
+```
+🔄 Running database migrations...
+✓ Applied migration: 20241201120000_add_github_oauth_support.sql
+✅ Applied 1 migration(s)
+🚀 API server running on port 3000
+```
+
+**Creating New Migrations:**
+```bash
+# Generate migration files
+npm run migrate:create add_user_preferences
+
+# Edit the generated files
+migrations/20250123093000_add_user_preferences.sql       # Up migration
+migrations/20250123093000_add_user_preferences.down.sql  # Rollback
+
+# Apply migration (or restart server for automatic apply)
+npm run migrate
+```
+
+**Migration Best Practices:**
+- Use `IF EXISTS` / `IF NOT EXISTS` for idempotent operations
+- Always create both `.sql` and `.down.sql` files
+- Test rollback before deploying: `npm run migrate:rollback`
+- Dashboard migrations only touch `users` table (core schema managed by extractor)
+- Never modify applied migrations - create new ones instead
+
+For comprehensive migration documentation including architecture, troubleshooting, and advanced usage, see the **Database Migrations** section in [CLAUDE.md](./CLAUDE.md).
+
 ### Design Specifications
 
 **Design Philosophy:**
@@ -591,11 +655,14 @@ The dashboard requires authentication via OAuth2. Only users with email addresse
 4. Copy the **Application ID** and **Secret** to your `.env` file
 5. **Optional:** If using self-hosted GitLab, set `GITLAB_BASE_URL` to your instance URL (e.g., https://gitlab.company.com)
 
-*Database:*
-- Run the migration script: `migrations/add_github_oauth_support.sql`
-- Run the migration script: `migrations/add_gitlab_oauth_support.sql`
+*Database Migrations:*
+- **Automatic Migration**: Migrations run automatically when the server starts
+- **Manual Migration**: Run `npm run migrate` to apply pending migrations manually
+- OAuth migrations already included:
+  - `20241201120000_add_github_oauth_support.sql`
+  - `20241215140000_add_gitlab_oauth_support.sql`
 - These migrations add support for linked OAuth accounts (same email can login with all providers)
-- Migrations enable account linking across Google, GitHub, and GitLab
+- See "Database Migrations" section below for details
 
 For detailed authentication documentation, see [CLAUDE.md](./CLAUDE.md).
 
@@ -761,7 +828,7 @@ The dashboard follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 - **MINOR**: New features or significant enhancements
 - **PATCH**: Bug fixes and minor improvements
 
-**Current Version:** `1.0.0` (displayed in footer on all pages)
+**Current Version:** `1.7.0` (displayed in footer on all pages)
 
 ### How to Update the Version
 

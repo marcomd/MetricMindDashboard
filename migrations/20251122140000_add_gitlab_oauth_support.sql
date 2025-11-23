@@ -15,12 +15,12 @@ DROP INDEX IF EXISTS idx_users_gitlab_id;
 DROP INDEX IF EXISTS idx_users_gitlab_id_unique;
 
 -- Create partial unique index (UNIQUE when NOT NULL)
-CREATE UNIQUE INDEX idx_users_gitlab_id_unique
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_gitlab_id_unique
   ON users(gitlab_id)
   WHERE gitlab_id IS NOT NULL;
 
 -- Step 3: Add regular index for fast lookups (non-unique, for performance)
-CREATE INDEX idx_users_gitlab_id ON users(gitlab_id);
+CREATE INDEX IF NOT EXISTS idx_users_gitlab_id ON users(gitlab_id);
 
 -- Schema Design Notes:
 -- =====================
