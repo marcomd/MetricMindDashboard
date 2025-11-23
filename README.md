@@ -362,6 +362,8 @@ The backend exposes these RESTful endpoints:
 - **GET /auth/google/callback** - Google OAuth callback handler with domain validation
 - **GET /auth/github** - Initiates GitHub OAuth2 flow
 - **GET /auth/github/callback** - GitHub OAuth callback handler with domain validation
+- **GET /auth/gitlab** - Initiates GitLab OAuth2 flow
+- **GET /auth/gitlab/callback** - GitLab OAuth callback handler with domain validation
 - **GET /auth/check** - Check authentication status and return user info
 - **POST /auth/logout** - Logout user and clear JWT cookie
 
@@ -512,13 +514,13 @@ Categorization creates these views:
 
 ### Authentication
 
-**OAuth2 with Multiple Providers (Google & GitHub)**
+**OAuth2 with Multiple Providers (Google, GitHub & GitLab)**
 
-The dashboard requires authentication via OAuth2. Only users with email addresses from authorized domains can access the application. Users can sign in using either Google or GitHub accounts, and both providers can be linked to the same account.
+The dashboard requires authentication via OAuth2. Only users with email addresses from authorized domains can access the application. Users can sign in using Google, GitHub, or GitLab accounts, and all providers can be linked to the same account.
 
 **Features:**
-- Multiple OAuth2 providers (Google and GitHub)
-- **Linked accounts**: Same email address can use both Google and GitHub to login
+- Multiple OAuth2 providers (Google, GitHub, and GitLab)
+- **Linked accounts**: Same email address can use all three providers to login
 - Domain-based access control (@iubenda.com, @team.blue)
 - JWT token authentication with httpOnly cookies
 - User avatar display in header
@@ -536,6 +538,12 @@ The dashboard requires authentication via OAuth2. Only users with email addresse
 - `GITHUB_CLIENT_ID` - GitHub OAuth App Client ID
 - `GITHUB_CLIENT_SECRET` - GitHub OAuth App Client Secret
 - `GITHUB_CALLBACK_URL` - OAuth callback URL (e.g., http://localhost:3000/auth/github/callback)
+
+*GitLab OAuth:*
+- `GITLAB_CLIENT_ID` - GitLab Application ID
+- `GITLAB_CLIENT_SECRET` - GitLab Application Secret
+- `GITLAB_CALLBACK_URL` - OAuth callback URL (e.g., http://localhost:3000/auth/gitlab/callback)
+- `GITLAB_BASE_URL` - GitLab instance URL (default: https://gitlab.com, use custom URL for self-hosted GitLab)
 
 *Common:*
 - `JWT_SECRET` - Secret key for JWT signing (use `openssl rand -base64 32` to generate)
@@ -558,10 +566,22 @@ The dashboard requires authentication via OAuth2. Only users with email addresse
 4. Copy Client ID and Client Secret to `.env` file
 5. **Important:** Ensure your GitHub email is verified and set to public for domain validation
 
+*GitLab OAuth:*
+1. Create OAuth Application in [GitLab User Settings > Applications](https://gitlab.com/-/profile/applications)
+   - For self-hosted GitLab: Navigate to User Settings > Applications on your GitLab instance
+2. Fill in application details:
+   - **Name:** Metric Mind Dashboard
+   - **Redirect URI:** `http://localhost:3000/auth/gitlab/callback` (add production URL as well)
+   - **Scopes:** Select `read_user` (to read user profile and email)
+3. Save the application
+4. Copy the **Application ID** and **Secret** to your `.env` file
+5. **Optional:** If using self-hosted GitLab, set `GITLAB_BASE_URL` to your instance URL (e.g., https://gitlab.company.com)
+
 *Database:*
 - Run the migration script: `migrations/add_github_oauth_support.sql`
-- This adds support for linked OAuth accounts (same email can login with both providers)
-- Migration adds GitHub OAuth support and enables account linking
+- Run the migration script: `migrations/add_gitlab_oauth_support.sql`
+- These migrations add support for linked OAuth accounts (same email can login with all providers)
+- Migrations enable account linking across Google, GitHub, and GitLab
 
 For detailed authentication documentation, see [CLAUDE.md](./CLAUDE.md).
 

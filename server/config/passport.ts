@@ -2,12 +2,14 @@ import './env.js'; // Load environment variables first
 import passport from 'passport';
 import { Strategy as GoogleStrategy, Profile as GoogleProfile, VerifyCallback as GoogleVerifyCallback } from 'passport-google-oauth20';
 import { Strategy as GitHubStrategy, Profile as GitHubProfile } from 'passport-github2';
+import { Strategy as GitLabStrategy } from 'passport-gitlab2';
 import { findUserByProviderId, upsertUser } from '../db.js';
 
 interface User {
   id: number;
   google_id?: string | null;
   github_id?: string | null;
+  gitlab_id?: string | null;
   email: string;
   name: string;
   domain: string;
@@ -121,6 +123,58 @@ passport.use(
           githubId: profile.id,
           email: email,
           name: profile.displayName || profile.username || 'GitHub User',
+          domain: domain,
+          avatarUrl: avatarUrl,
+        });
+
+        return done(null, user);
+      } catch (err) {
+        return done(err as Error, undefined);
+      }
+    }
+  )
+);
+
+// GitLab OAuth2 Strategy
+passport.use(
+  new GitLabStrategy(
+    {
+      clientID: process.env.GITLAB_CLIENT_ID!,
+      clientSecret: process.env.GITLAB_CLIENT_SECRET!,
+      callbackURL: process.env.GITLAB_CALLBACK_URL!,
+      baseURL: process.env.GITLAB_BASE_URL || 'https://gitlab.com',
+    },
+    async (accessToken: string, refreshToken: string, profile: any, done: any) => {
+      try {
+        // GitLab provides email directly in profile
+        const email = profile.emails?.[0]?.value || profile._json?.email;
+
+        if (!email) {
+          return done(null, false, { message: 'No email found in GitLab profile' });
+        }
+
+        // Extract domain from email
+        const domain = email.split('@')[1];
+
+        // Validate domain
+        if (!ALLOWED_DOMAINS.includes(domain)) {
+          return done(null, false, {
+            message: `Access denied. Only ${ALLOWED_DOMAINS.join(', ')} domains are allowed.`,
+            invalidDomain: true,
+            email
+          } as any);
+        }
+
+        // Extract avatar URL from GitLab profile
+        const avatarUrl = profile.avatarUrl || profile._json?.avatar_url || null;
+
+        // Upsert user in database
+        const user = await upsertUser({
+          googleId: null,
+          githubId: null,
+          gitlabId: profile.id,
+          email: email,
+          name: profile.displayName || profile.username || 'GitLab User',
           domain: domain,
           avatarUrl: avatarUrl,
         });

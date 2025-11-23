@@ -5,6 +5,36 @@ All notable changes to Metric Mind Dashboard will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2025-11-23
+
+### Added
+- **GitLab OAuth2 authentication support**: Users can now sign in with GitLab in addition to Google and GitHub
+  - "Continue with GitLab" button on login page with GitLab's orange branding
+  - GitLab OAuth strategy with domain validation
+  - New authentication routes: `/auth/gitlab` and `/auth/gitlab/callback`
+  - Support for both GitLab.com and self-hosted GitLab instances via `GITLAB_BASE_URL` environment variable
+- **Enhanced linked account support**: Same email address can now login with all three providers (Google, GitHub, and GitLab)
+  - User accounts support `google_id`, `github_id`, and `gitlab_id` simultaneously
+  - Automatic account linking when logging in with any provider using the same email
+  - Seamless switching between providers for authenticated sessions
+
+### Changed
+- **Database schema enhancement**: Added `gitlab_id` column to `users` table
+  - Partial unique index on `gitlab_id` (UNIQUE when NOT NULL)
+  - Updated all user-related queries to include GitLab ID field
+- **Authentication flow improvements**: Extended OAuth strategy to support three concurrent providers
+  - `findUserByProviderId()` now supports 'gitlab' as a provider option
+  - New `findUserByGitlabId()` helper function for GitLab account lookup
+  - `upsertUser()` updated to handle GitLab ID linking alongside Google and GitHub
+
+### Technical Details
+- Installed `passport-gitlab2` package for GitLab OAuth strategy
+- Created database migration script: `migrations/add_gitlab_oauth_support.sql`
+- Updated TypeScript interfaces across `server/db.ts`, `server/config/passport.ts`, and `server/routes/auth.ts`
+- Enhanced `AuthContext.tsx` to accept GitLab provider: `login('gitlab')`
+- Updated all authentication documentation in README.md and CLAUDE.md with GitLab setup instructions
+- GitLab strategy configured with `read_user` scope for profile and email access
+
 ## [1.4.0] - 2025-11-22
 
 ### Added
@@ -207,6 +237,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version History Summary
 
+- **1.5.0**: GitLab OAuth support with multi-provider linked accounts and self-hosted GitLab support
 - **1.4.0**: GitHub OAuth support with linked accounts and simplified schema
 - **1.3.0**: Personal Performance page with individual contributor analytics and UX improvements
 - **1.2.0**: Weighted data toggle, improved category filtering, and UI refinements

@@ -87,6 +87,26 @@ export default function Login(): JSX.Element {
           <span>Continue with GitHub</span>
         </button>
 
+        {/* Divider */}
+        <div className="flex items-center gap-4 my-4">
+          <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700"></div>
+          <span className="text-sm text-gray-500 dark:text-gray-400">OR</span>
+          <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700"></div>
+        </div>
+
+        {/* GitLab Sign In Button */}
+        <button
+          onClick={() => login('gitlab')}
+          className="w-full flex items-center justify-center gap-3 bg-orange-600 hover:bg-orange-700 text-white font-semibold py-3 px-6 rounded-xl border-2 border-orange-600 transition-all duration-300 shadow-sm hover:shadow-md"
+        >
+          {/* GitLab Icon */}
+          <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M23.546 10.93L13.067.452c-.604-.603-1.582-.603-2.188 0L.397 10.93c-.531.529-.531 1.387 0 1.916l10.48 10.478c.604.604 1.582.604 2.188 0l10.48-10.478c.531-.529.531-1.387 0-1.916zM12 20.566l-8.567-8.566L12 3.434l8.567 8.566L12 20.566z"/>
+            <path d="M12.003 7.551l-4.45 13.711 2.903-8.943h3.095l2.902 8.943z"/>
+          </svg>
+          <span>Continue with GitLab</span>
+        </button>
+
         {/* Info Text */}
         <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
           <p className="text-sm text-gray-500 dark:text-gray-400">

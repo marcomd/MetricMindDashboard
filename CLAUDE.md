@@ -223,19 +223,19 @@ const efficiency = data.weight_efficiency_pct !== undefined ? parseFloat(data.we
 
 ## Authentication
 
-**OAuth2 with Linked Accounts (Google & GitHub)**
+**OAuth2 with Linked Accounts (Google, GitHub & GitLab)**
 
-The dashboard supports authentication via multiple OAuth2 providers (Google and GitHub) with domain-based access control. Only users with email addresses from authorized domains (@iubenda.com, @team.blue) can access the application.
+The dashboard supports authentication via multiple OAuth2 providers (Google, GitHub, and GitLab) with domain-based access control. Only users with email addresses from authorized domains (@iubenda.com, @team.blue) can access the application.
 
-**Account Linking:** A single user account is identified by email address. Users can login with either Google or GitHub, and both providers can be linked to the same account. When a user logs in with a second provider using the same email, that provider ID is added to their existing account.
+**Account Linking:** A single user account is identified by email address. Users can login with Google, GitHub, or GitLab, and all providers can be linked to the same account. When a user logs in with a second provider using the same email, that provider ID is added to their existing account.
 
 ### Architecture
 
 **Backend Authentication Flow:**
-1. User clicks "Continue with Google" or "Continue with GitHub" on login page
-2. Redirected to `/auth/google` or `/auth/github` (Passport.js OAuth2 strategy)
+1. User clicks "Continue with Google", "Continue with GitHub", or "Continue with GitLab" on login page
+2. Redirected to `/auth/google`, `/auth/github`, or `/auth/gitlab` (Passport.js OAuth2 strategy)
 3. OAuth provider authentication and consent screen
-4. Callback to `/auth/google/callback` or `/auth/github/callback` with user profile
+4. Callback to `/auth/google/callback`, `/auth/github/callback`, or `/auth/gitlab/callback` with user profile
 5. Domain validation (email domain must match ALLOWED_DOMAINS)
 6. If authorized:
    - Check if user exists by email
@@ -246,13 +246,15 @@ The dashboard supports authentication via multiple OAuth2 providers (Google and 
 8. Redirect to dashboard home page
 
 **Account Linking Example:**
-- User first logs in with Google → Creates account with `google_id='123'`, `github_id=NULL`
-- Same user later logs in with GitHub → Updates account to `google_id='123'`, `github_id='456'`
-- User can now login with either provider
+- User first logs in with Google → Creates account with `google_id='123'`, `github_id=NULL`, `gitlab_id=NULL`
+- Same user later logs in with GitHub → Updates account to `google_id='123'`, `github_id='456'`, `gitlab_id=NULL`
+- Same user later logs in with GitLab → Updates account to `google_id='123'`, `github_id='456'`, `gitlab_id='789'`
+- User can now login with any of the three providers
 
 **Provider-Specific Notes:**
 - **Google:** Requires Google+ API or People API enabled in Google Cloud Console
 - **GitHub:** Requires user's primary email to be public and verified for domain validation
+- **GitLab:** Works with both GitLab.com and self-hosted GitLab instances (configure via `GITLAB_BASE_URL`)
 
 **Frontend Authentication:**
 - `AuthContext` manages authentication state across the app
@@ -269,7 +271,9 @@ The dashboard supports authentication via multiple OAuth2 providers (Google and 
 
 ### Database Schema
 
-The `users` table supports linked OAuth accounts. To set up GitHub OAuth support, run the migration script at `migrations/add_github_oauth_support.sql`.
+The `users` table supports linked OAuth accounts. To set up OAuth support, run the migration scripts:
+- `migrations/add_github_oauth_support.sql` (for GitHub)
+- `migrations/add_gitlab_oauth_support.sql` (for GitLab)
 
 **Users Table Schema:**
 
@@ -278,6 +282,7 @@ CREATE TABLE users (
   id SERIAL PRIMARY KEY,
   google_id VARCHAR(255),
   github_id VARCHAR(255),
+  gitlab_id VARCHAR(255),
   email VARCHAR(255) UNIQUE NOT NULL,
   name VARCHAR(255),
   domain VARCHAR(255) NOT NULL,
@@ -289,10 +294,12 @@ CREATE TABLE users (
 -- Partial unique indexes (allow NULL but enforce uniqueness when present)
 CREATE UNIQUE INDEX idx_users_google_id_unique ON users(google_id) WHERE google_id IS NOT NULL;
 CREATE UNIQUE INDEX idx_users_github_id_unique ON users(github_id) WHERE github_id IS NOT NULL;
+CREATE UNIQUE INDEX idx_users_gitlab_id_unique ON users(gitlab_id) WHERE gitlab_id IS NOT NULL;
 
 -- Regular indexes for lookups
 CREATE INDEX idx_users_google_id ON users(google_id);
 CREATE INDEX idx_users_github_id ON users(github_id);
+CREATE INDEX idx_users_gitlab_id ON users(gitlab_id);
 CREATE INDEX idx_users_email ON users(email);
 ```
 
@@ -300,7 +307,8 @@ CREATE INDEX idx_users_email ON users(email);
 - **email**: UNIQUE - One account per email address
 - **google_id**: UNIQUE when not null - Each Google ID can only be used once
 - **github_id**: UNIQUE when not null - Each GitHub ID can only be used once
-- **Linked accounts**: Both `google_id` and `github_id` can be populated for the same user
+- **gitlab_id**: UNIQUE when not null - Each GitLab ID can only be used once
+- **Linked accounts**: All three provider IDs (`google_id`, `github_id`, and `gitlab_id`) can be populated for the same user
 - **Provider inference**: No separate `provider` field - determined by which ID is populated during login
 
 ### Authentication Endpoints
@@ -310,6 +318,8 @@ CREATE INDEX idx_users_email ON users(email);
 - `GET /auth/google/callback` - Google OAuth callback handler
 - `GET /auth/github` - Initiates GitHub OAuth flow
 - `GET /auth/github/callback` - GitHub OAuth callback handler
+- `GET /auth/gitlab` - Initiates GitLab OAuth flow
+- `GET /auth/gitlab/callback` - GitLab OAuth callback handler
 - `GET /auth/check` - Check authentication status (returns user info if authenticated)
 - `POST /auth/logout` - Logout user (clears cookie)
 
@@ -342,6 +352,21 @@ CREATE INDEX idx_users_email ON users(email);
 6. Add both to your `.env` file
 7. **Important:** Users must have their primary email set to public in GitHub settings for authentication to work
 
+**GitLab Application Setup:**
+
+1. Go to https://gitlab.com/-/profile/applications (or User Settings > Applications on your GitLab instance)
+2. Fill in application details:
+   - **Name:** Metric Mind Dashboard
+   - **Redirect URI:** `http://localhost:3000/auth/gitlab/callback` (add production URL as well, one per line)
+   - **Scopes:** Select `read_user` (to read user profile and email)
+3. Save the application
+4. Copy the **Application ID** and **Secret** to your `.env` file as:
+   - `GITLAB_CLIENT_ID` = Application ID
+   - `GITLAB_CLIENT_SECRET` = Secret
+5. **Optional:** For self-hosted GitLab, set `GITLAB_BASE_URL` in your `.env` file:
+   - Example: `GITLAB_BASE_URL=https://gitlab.company.com`
+   - Leave unset or use `https://gitlab.com` for GitLab.com
+
 ### Using Authentication in Code
 
 **Frontend - Login with Provider:**
@@ -355,6 +380,7 @@ function LoginPage() {
     <div>
       <button onClick={() => login('google')}>Login with Google</button>
       <button onClick={() => login('github')}>Login with GitHub</button>
+      <button onClick={() => login('gitlab')}>Login with GitLab</button>
     </div>
   );
 }
