@@ -3,11 +3,13 @@ import { X, BarChart3, AlertTriangle, Inbox } from 'lucide-react';
 import { fetchMonthlyCommits } from '../utils/api';
 import { formatDate } from '../utils/dateFormat';
 import LoadingSpinner from './LoadingSpinner';
+import CommitDescription from './CommitDescription';
 
 interface Commit {
   commit_hash: string;
   commit_date: string;
   commit_message: string;
+  description: string | null;
   author_name: string;
   repository_name: string;
   lines_changed: number;
@@ -197,7 +199,8 @@ const MonthlyCommitDetails: React.FC<MonthlyCommitDetailsProps> = ({
                   )}
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100 max-w-md">
-                  <div className="line-clamp-2">{commit.commit_message}</div>
+                  <div className="line-clamp-2 inline">{commit.commit_message}</div>
+                  <CommitDescription description={commit.description} />
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-600 dark:text-gray-400">
                   {commit.commit_hash.substring(0, 7)}

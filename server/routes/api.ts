@@ -583,6 +583,7 @@ router.get('/monthly-commits/:year_month', async (req: Request, res: Response) =
         c.commit_date,
         c.hash as commit_hash,
         c.subject as commit_message,
+        c.description,
         c.author_name,
         ${hasRepoFilter ? 'r.name' : '(SELECT name FROM repositories WHERE id = c.repository_id)'} as repository_name,
         (c.lines_added + c.lines_deleted) as lines_changed,
@@ -679,6 +680,7 @@ router.get('/summary', async (req: Request, res: Response) => {
         c.commit_date,
         c.hash as commit_hash,
         c.subject as commit_message,
+        c.description,
         c.author_name,
         ${hasRepoFilter ? 'r.name' : '(SELECT name FROM repositories WHERE id = c.repository_id)'} as repository_name,
         (c.lines_added + c.lines_deleted) as lines_changed,
@@ -859,43 +861,45 @@ router.get('/personal-performance', async (req: Request, res: Response) => {
       ORDER BY total_commits DESC
     `;
 
-    // 5. Commit Details List (uses v_personal_commit_details view)
+    // 5. Commit Details List (query directly from commits table)
     let commitDetailsQuery = `
       SELECT
-        commit_date,
-        hash as commit_hash,
-        subject as commit_message,
-        author_name,
-        repository_name,
-        category,
-        lines_changed,
-        lines_added,
-        lines_deleted,
-        weight
-      FROM v_personal_commit_details
-      WHERE author_email = $1
+        c.commit_date,
+        c.hash as commit_hash,
+        c.subject as commit_message,
+        c.description,
+        c.author_name,
+        r.name as repository_name,
+        c.category,
+        (c.lines_added + c.lines_deleted) as lines_changed,
+        c.lines_added,
+        c.lines_deleted,
+        c.weight
+      FROM commits c
+      JOIN repositories r ON c.repository_id = r.id
+      WHERE c.author_email = $1
     `;
 
     const commitDetailsParams: any[] = [authorEmail];
     let commitParamIndex = 2;
 
     if (hasRepoFilter) {
-      commitDetailsQuery += ` AND repository_name = $${commitParamIndex}`;
+      commitDetailsQuery += ` AND r.name = $${commitParamIndex}`;
       commitDetailsParams.push(repo);
       commitParamIndex++;
     }
     if (dateFrom) {
-      commitDetailsQuery += ` AND commit_date >= $${commitParamIndex}`;
+      commitDetailsQuery += ` AND c.commit_date >= $${commitParamIndex}`;
       commitDetailsParams.push(dateFrom);
       commitParamIndex++;
     }
     if (dateTo) {
-      commitDetailsQuery += ` AND commit_date <= $${commitParamIndex}`;
+      commitDetailsQuery += ` AND c.commit_date <= $${commitParamIndex}`;
       commitDetailsParams.push(dateTo);
       commitParamIndex++;
     }
 
-    commitDetailsQuery += ` ORDER BY commit_date DESC LIMIT ${limit}`;
+    commitDetailsQuery += ` ORDER BY c.commit_date DESC LIMIT ${limit}`;
 
     // 6. Team Comparison - Get team totals for comparison (with weight > 0 filter)
     const teamStatsQuery = `
@@ -953,6 +957,7 @@ router.get('/commits', async (req: Request, res: Response) => {
         c.id,
         c.hash,
         c.subject,
+        c.description,
         c.author_name,
         c.author_email,
         c.commit_date,

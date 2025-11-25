@@ -125,6 +125,24 @@ git-analytics-dashboard/
 └── .replit                    # Replit configuration
 ```
 
+### Commit Description Feature
+
+The dashboard displays detailed commit descriptions throughout all commit lists. When a commit has an extended description (beyond the subject line), an interactive info icon (ⓘ) appears next to the commit message.
+
+**How it works:**
+- Info icon appears only when description is available
+- Click the icon to view full description in a popup
+- Popup automatically positions itself to stay within viewport
+- Click outside or press the X button to close
+- Supports multi-line descriptions (2-4 sentences)
+- Full dark mode support
+
+**Available in these pages:**
+- **Overview** - "Commit Details" section (Top 10 Largest Commits)
+- **Trends** - Month details panel (Top commits for selected month)
+- **My Performance** - "Last X commits" section
+- **Commit Search** - Search results table
+
 ### Dashboard Views
 
 The dashboard includes the following pages:
@@ -271,11 +289,13 @@ The dashboard includes the following pages:
     - Advanced search filters (Repository, Author, Date Range, Hash)
     - Interactive results table with sortable columns
     - **Weight Indicator**: Visual display of commit weight
+    - **Description Display**: Info icon shows full commit description in popup
     - **Edit Modal**: Modify commit subject, category, weight, and AI tools
   - **Access Control**:
     - Edit functionality restricted to commit authors
   - **User Experience**:
     - Quickly find specific commits
+    - View detailed commit descriptions with info icon
     - Correct metadata (categories, weights) directly from the UI
     - Track AI tool usage per commit
 
@@ -469,7 +489,7 @@ These fields may be `undefined` or `null` in older data or when weights are not 
 
 **Core Tables:**
 - `repositories` - Repository information
-- `commits` - Individual commit records
+- `commits` - Individual commit records (includes subject, description, hash, date, author, lines changed, weight, category, etc.)
 - `users` - Authenticated users (google_id, email, name, domain, avatar_url)
 
 **Analytics Views:**

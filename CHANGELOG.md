@@ -5,6 +5,37 @@ All notable changes to Metric Mind Dashboard will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.0] - 2025-11-25
+
+### Added
+- **Commit Description Display**: Enhanced commit lists with interactive description viewer
+  - New `CommitDescription` component with info icon (ⓘ) next to commit messages
+  - Smart popup positioning that adapts to viewport boundaries
+  - Click-outside-to-close functionality for improved UX
+  - Gradual disclosure: icon only appears when description is available
+  - Full dark mode support with smooth transitions
+  - Available across all commit lists:
+    - **Overview page**: "Top 10 Largest Commits" section
+    - **Trends page**: Monthly commit details panel
+    - **Personal Performance page**: "Last X commits" section
+    - **Commit Search page**: Search results table
+- **Category Display in Commit Search**: Added category column to search results table for better commit classification visibility
+
+### Changed
+- **API Enhancements**: Updated all commit-related endpoints to return `description` field
+  - `GET /api/summary` - Enhanced largest commits data
+  - `GET /api/monthly-commits/:year_month` - Added description to monthly top commits
+  - `GET /api/personal-performance` - Included description in commit details
+  - `GET /api/commits` - Added description to search results
+- **Database Queries**: Modified personal performance endpoint to query directly from commits table for better flexibility and control
+
+### Technical Details
+- Created reusable `CommitDescription.tsx` component with TypeScript interfaces
+- Implemented viewport-aware positioning algorithm for popup placement
+- Added event propagation prevention to avoid conflicts with table row interactions
+- Updated TypeScript interfaces across all pages to include `description: string | null`
+- Enhanced documentation in README.md with new "Commit Description Feature" section
+
 ## [1.7.0] - 2025-11-23
 
 ### Added

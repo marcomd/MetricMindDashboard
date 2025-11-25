@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import LoadingSpinner from '../components/LoadingSpinner';
 import StatCard from '../components/StatCard';
 import WeightBadge from '../components/WeightBadge';
+import CommitDescription from '../components/CommitDescription';
 import { formatDate, toISOFormat, fromISOFormat, addMonths } from '../utils/dateFormat';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
@@ -70,6 +71,7 @@ interface CommitDetail {
   commit_date: string;
   commit_hash: string;
   commit_message: string;
+  description: string | null;
   author_name: string;
   repository_name: string;
   category: string | null;
@@ -690,9 +692,10 @@ function PersonalPerformance(): JSX.Element {
                       {commit.repository_name}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900 dark:text-white max-w-md">
-                      <div className="line-clamp-2" title={commit.commit_message}>
+                      <div className="line-clamp-2 inline" title={commit.commit_message}>
                         {commit.commit_message}
                       </div>
+                      <CommitDescription description={commit.description} />
                       <div className="text-xs text-gray-500 dark:text-gray-500 mt-1">
                         {commit.commit_hash.substring(0, 7)}
                       </div>

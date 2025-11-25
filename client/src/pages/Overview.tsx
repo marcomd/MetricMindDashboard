@@ -3,6 +3,7 @@ import { fetchSummary, fetchRepos, fetchContributorsDateRange } from '../utils/a
 import LoadingSpinner from '../components/LoadingSpinner';
 import StatCard from '../components/StatCard';
 import WeightBadge from '../components/WeightBadge';
+import CommitDescription from '../components/CommitDescription';
 import { formatDate } from '../utils/dateFormat';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
@@ -39,6 +40,7 @@ interface LargestCommit {
   commit_hash: string;
   commit_date: string;
   commit_message: string;
+  description: string | null;
   author_name: string;
   repository_name: string;
   lines_added: number;
@@ -463,9 +465,10 @@ function Overview(): JSX.Element {
                       )}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900 dark:text-white max-w-md">
-                      <div className="line-clamp-2" title={commit.commit_message}>
+                      <div className="line-clamp-2 inline" title={commit.commit_message}>
                         {commit.commit_message}
                       </div>
+                      <CommitDescription description={commit.description} />
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 font-mono">
                       {commit.commit_hash.substring(0, 7)}

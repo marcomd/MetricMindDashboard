@@ -3,12 +3,14 @@ import { Search, Filter, Edit2, X, Save, Loader2 } from 'lucide-react';
 import { searchCommits, updateCommit, fetchRepos } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
 import WeightBadge from '../components/WeightBadge';
+import CommitDescription from '../components/CommitDescription';
 
 
 interface Commit {
   id: number;
   hash: string;
   subject: string;
+  description: string | null;
   author_name: string;
   author_email: string;
   commit_date: string;
@@ -200,6 +202,7 @@ const CommitSearch = () => {
                 <th className="px-6 py-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Repository</th>
                 <th className="px-6 py-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Author</th>
                 <th className="px-6 py-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Message</th>
+                <th className="px-6 py-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Category</th>
                 <th className="px-6 py-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Weight</th>
                 <th className="px-6 py-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Hash</th>
                 <th className="px-6 py-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right">Actions</th>
@@ -208,7 +211,7 @@ const CommitSearch = () => {
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {commits.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
+                  <td colSpan={8} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
                     No commits found. Try adjusting your filters.
                   </td>
                 </tr>
@@ -224,8 +227,12 @@ const CommitSearch = () => {
                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
                       {commit.author_name}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 max-w-md truncate">
-                      {commit.subject}
+                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 max-w-md">
+                      <span className="inline">{commit.subject}</span>
+                      <CommitDescription description={commit.description} />
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 whitespace-nowrap">
+                      {commit.category || '-'}
                     </td>
                     <td className="px-6 py-4 text-sm">
                       <WeightBadge efficiency={commit.weight} showTooltip={false} size="sm" />
