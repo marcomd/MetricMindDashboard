@@ -18,7 +18,6 @@ interface Repository {
 
 interface CategoryData {
   category: string;
-  category_weight?: number;
   total_commits: string;
   effective_commits?: string | number;
   avg_weight?: string | number;
@@ -41,7 +40,6 @@ interface TrendData {
 interface RepoMatrixData {
   repository: string;
   category: string;
-  category_weight?: number;
   total_commits: string;
   effective_commits?: string | number;
   avg_weight?: string | number;
@@ -507,143 +505,6 @@ const ContentAnalysis = (): JSX.Element => {
         </div>
       )}
 
-      {/* Weight Impact Section */}
-      {!dataLoading && categoryData.length > 0 && (() => {
-        // Calculate weight impact metrics using FULL category data (not limited to top 15)
-        const fullTotalCommits = fullCategoryData.reduce((sum, c) => {
-          if (useWeightedData && c.effective_commits) {
-            return sum + parseFloat(String(c.effective_commits));
-          }
-          return sum + parseInt(c.total_commits || '0');
-        }, 0);
-        const fullTotalEffectiveCommits = fullCategoryData.reduce((sum, c) =>
-          sum + parseFloat(String(c.effective_commits || c.total_commits)), 0
-        );
-        const fullRawCommits = fullCategoryData.reduce((sum, c) => sum + parseInt(c.total_commits || '0'), 0);
-        const overallEfficiency = fullRawCommits > 0
-          ? (fullTotalEffectiveCommits / fullRawCommits) * 100
-          : 100;
-        const deprioritizedCategories = fullCategoryData.filter(c =>
-          c.category_weight !== undefined && c.category_weight < 100
-        ).sort((a, b) => parseInt(b.total_commits || '0') - parseInt(a.total_commits || '0'));
-
-        return (overallEfficiency < 100 || deprioritizedCategories.length > 0) && (
-          <div className="space-y-6">
-            <div>
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                Weight Impact Analysis
-              </h3>
-              <p className="text-gray-600 dark:text-gray-400">
-                Understanding commit prioritization and category weighting effects
-              </p>
-            </div>
-
-            {/* Weight Overview Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <StatCard
-                title="Overall Weight Efficiency"
-                value={overallEfficiency.toFixed(1)}
-                icon="⚖️"
-                color="indigo"
-                suffix="%"
-              />
-              <StatCard
-                title="De-prioritized Categories"
-                value={deprioritizedCategories.length}
-                icon="⚠️"
-                color="orange"
-              />
-            </div>
-
-            {/* De-prioritized Categories Table */}
-            {deprioritizedCategories.length > 0 && (
-              <div className="card">
-                <h4 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-                  De-prioritized Categories
-                </h4>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                    <thead className="bg-gray-50 dark:bg-gray-800">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                          Category
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                          Weight
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                          Total Commits
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                          Effective Commits
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                          Discounted
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                          Efficiency
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
-                      {deprioritizedCategories.map((cat) => {
-                        const commits = parseInt(String(cat.total_commits));
-                        const effective = parseFloat(String(cat.effective_commits || commits));
-                        const discounted = commits - effective;
-                        const efficiency = parseFloat(String(cat.weight_efficiency_pct || 100));
-
-                        return (
-                          <tr key={cat.category} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="flex items-center gap-2">
-                                <div
-                                  className="w-3 h-3 rounded-full"
-                                  style={{ backgroundColor: getCategoryColor(cat.category, 0) }}
-                                />
-                                <span className="text-sm font-medium text-gray-900 dark:text-white">
-                                  {cat.category}
-                                </span>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm">
-                              <span className={`font-medium ${
-                                (cat.category_weight || 100) >= 75 ? 'text-yellow-600 dark:text-yellow-400' :
-                                (cat.category_weight || 100) >= 50 ? 'text-orange-600 dark:text-orange-400' :
-                                'text-red-600 dark:text-red-400'
-                              }`}>
-                                {cat.category_weight}%
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                              {commits.toLocaleString()}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                              {effective.toFixed(1)}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                              {discounted.toFixed(1)}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm">
-                              <WeightBadge
-                                efficiency={efficiency}
-                                totalCommits={commits}
-                                effectiveCommits={effective}
-                                size="sm"
-                              />
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
-          </div>
-        );
-      })()}
-
       {/* Loading State */}
       {dataLoading && (
         <div className="flex justify-center items-center h-64">
@@ -903,6 +764,137 @@ const ContentAnalysis = (): JSX.Element => {
           </div>
         </>
       )}
+
+      {/* Weight Impact Section */}
+      {!dataLoading && categoryData.length > 0 && (() => {
+        // Calculate weight impact metrics using FULL category data (not limited to top 15)
+        const fullTotalEffectiveCommits = fullCategoryData.reduce((sum, c) =>
+          sum + parseFloat(String(c.effective_commits || c.total_commits)), 0
+        );
+        const fullRawCommits = fullCategoryData.reduce((sum, c) => sum + parseInt(c.total_commits || '0'), 0);
+        const overallEfficiency = fullRawCommits > 0
+          ? (fullTotalEffectiveCommits / fullRawCommits) * 100
+          : 100;
+        const lowWeightCategories = fullCategoryData.filter(c =>
+          c.avg_weight !== undefined && parseFloat(String(c.avg_weight)) < 100
+        ).sort((a, b) => parseInt(b.total_commits || '0') - parseInt(a.total_commits || '0'));
+
+        return (overallEfficiency < 100 || lowWeightCategories.length > 0) && (
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                Weight Impact Analysis
+              </h3>
+              <p className="text-gray-600 dark:text-gray-400">
+                Understanding commit weight effects across categories
+              </p>
+            </div>
+
+            {/* Weight Overview Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <StatCard
+                title="Overall Weight Efficiency"
+                value={overallEfficiency.toFixed(1)}
+                icon="⚖️"
+                color="indigo"
+                suffix="%"
+              />
+              <StatCard
+                title="Low Weight Categories"
+                value={lowWeightCategories.length}
+                icon="⚠️"
+                color="orange"
+              />
+            </div>
+
+            {/* Low Weight Categories Table */}
+            {lowWeightCategories.length > 0 && (
+              <div className="card">
+                <h4 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+                  Low Weight Categories
+                </h4>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead className="bg-gray-50 dark:bg-gray-800">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Category
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Avg Weight
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Total Commits
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Effective Commits
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Discounted
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          Efficiency
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
+                      {lowWeightCategories.map((cat) => {
+                        const commits = parseInt(String(cat.total_commits));
+                        const effective = parseFloat(String(cat.effective_commits || commits));
+                        const discounted = commits - effective;
+                        const efficiency = parseFloat(String(cat.weight_efficiency_pct || 100));
+                        const avgWeight = parseFloat(String(cat.avg_weight || 100));
+
+                        return (
+                          <tr key={cat.category} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex items-center gap-2">
+                                <div
+                                  className="w-3 h-3 rounded-full"
+                                  style={{ backgroundColor: getCategoryColor(cat.category, 0) }}
+                                />
+                                <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                  {cat.category}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                              <span className={`font-medium ${
+                                avgWeight >= 75 ? 'text-yellow-600 dark:text-yellow-400' :
+                                avgWeight >= 50 ? 'text-orange-600 dark:text-orange-400' :
+                                'text-red-600 dark:text-red-400'
+                              }`}>
+                                {avgWeight.toFixed(1)}%
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                              {commits.toLocaleString()}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                              {effective.toFixed(1)}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                              {discounted.toFixed(1)}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                              <WeightBadge
+                                efficiency={efficiency}
+                                totalCommits={commits}
+                                effectiveCommits={effective}
+                                size="sm"
+                              />
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 };

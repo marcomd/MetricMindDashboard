@@ -353,7 +353,6 @@ router.get('/categories', async (req: Request, res: Response) => {
       let query = `
         SELECT
           COALESCE(c.category, 'UNCATEGORIZED') as category,
-          cat.weight as category_weight,
           COUNT(c.id)::int as total_commits,
           ROUND((SUM(c.weight) / 100)::numeric, 2) as effective_commits,
           ROUND(AVG(c.weight)::numeric, 1) as avg_weight,
@@ -362,7 +361,6 @@ router.get('/categories', async (req: Request, res: Response) => {
           COUNT(DISTINCT c.author_email)::int as unique_authors,
           COUNT(DISTINCT c.repository_id)::int as repositories
         FROM commits c
-        LEFT JOIN categories cat ON c.category = cat.name
       `;
 
       const conditions: string[] = [];
@@ -393,7 +391,7 @@ router.get('/categories', async (req: Request, res: Response) => {
       }
 
       query += `
-        GROUP BY c.category, cat.weight
+        GROUP BY c.category
         ORDER BY total_commits DESC
       `;
 
@@ -404,7 +402,6 @@ router.get('/categories', async (req: Request, res: Response) => {
       const result = await pool.query(`
         SELECT
           category,
-          category_weight,
           total_commits,
           effective_commits,
           avg_weight,
@@ -488,7 +485,6 @@ router.get('/category-by-repo', async (req: Request, res: Response) => {
         SELECT
           r.name as repository,
           COALESCE(c.category, 'UNCATEGORIZED') as category,
-          cat.weight as category_weight,
           COUNT(c.id)::int as total_commits,
           ROUND((SUM(c.weight) / 100)::numeric, 2) as effective_commits,
           ROUND(AVG(c.weight)::numeric, 1) as avg_weight,
@@ -496,7 +492,6 @@ router.get('/category-by-repo', async (req: Request, res: Response) => {
           SUM(c.lines_added + c.lines_deleted)::bigint as total_lines_changed
         FROM commits c
         JOIN repositories r ON c.repository_id = r.id
-        LEFT JOIN categories cat ON c.category = cat.name
       `;
 
       const conditions: string[] = [];
@@ -520,7 +515,7 @@ router.get('/category-by-repo', async (req: Request, res: Response) => {
       }
 
       query += `
-        GROUP BY r.name, c.category, cat.weight
+        GROUP BY r.name, c.category
         ORDER BY r.name, total_commits DESC
       `;
 
@@ -532,7 +527,6 @@ router.get('/category-by-repo', async (req: Request, res: Response) => {
         SELECT
           repository_name as repository,
           category,
-          category_weight,
           total_commits,
           effective_commits,
           avg_weight,
@@ -849,7 +843,6 @@ router.get('/personal-performance', async (req: Request, res: Response) => {
     const categoryBreakdownQuery = `
       SELECT
         category,
-        category_weight,
         total_commits,
         effective_commits,
         avg_weight,

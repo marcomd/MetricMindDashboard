@@ -301,7 +301,7 @@ The dashboard includes the following pages:
 
 ### Weight Analysis System (v1.1.0)
 
-The dashboard includes a comprehensive weight analysis system that allows prioritization and accurate measurement of commit impact by accounting for reverted commits and de-prioritized work categories.
+The dashboard includes a comprehensive weight analysis system that allows prioritization and accurate measurement of commit impact by accounting for reverted commits and low-weight work.
 
 #### Weight Concepts
 
@@ -310,17 +310,11 @@ The dashboard includes a comprehensive weight analysis system that allows priori
 - **1-99**: Partially weighted commits (reduced impact, e.g., auto-generated code, refactoring)
 - **100**: Full weight commits (normal, meaningful work)
 
-**Category Weights (0-100):**
-- Administrators can de-prioritize entire categories based on business priorities
-- Applied multiplicatively to commit weights
-- Enables strategic focus on high-priority work areas
-- Example: [MAINTENANCE] category might be weighted at 50% if the focus is on feature development
-
 #### Weight Metrics
 
 The system calculates and displays several weight-related metrics:
 
-- **Effective Commits**: Weighted commit count calculated as `SUM(commit_weight × category_weight) / 10000`
+- **Effective Commits**: Weighted commit count calculated as `SUM(commit_weight) / 100`
   - Example: 100 commits with 85% average weight = 85 effective commits
 - **Average Weight**: Mean weight across all commits (0-100 scale)
 - **Weight Efficiency**: Percentage of effective commits vs total commits
@@ -335,7 +329,7 @@ The system calculates and displays several weight-related metrics:
 **Gradual Disclosure UI Pattern:**
 - Weight indicators only appear when efficiency < 100%
 - Keeps the interface clean when all work has full weight
-- Highlights anomalies and de-prioritized work when present
+- Highlights anomalies and low-weight work when present
 
 **WeightBadge Component:**
 Color-coded badges with hover tooltips:
@@ -346,13 +340,13 @@ Color-coded badges with hover tooltips:
 
 **Weight Impact Section (Content Analysis Page):**
 - Overview cards showing overall weight efficiency
-- De-prioritized categories table with detailed breakdown:
-  - Category name and configured weight
+- Low weight categories table with detailed breakdown:
+  - Category name and average weight
   - Total commits vs effective commits
   - Discounted commits (commits with reduced weight)
   - Visual weight efficiency indicators
 - Repository weight efficiency comparison chart
-- Only appears when weight efficiency < 100% or categories are de-prioritized
+- Only appears when weight efficiency < 100% or low weight categories exist
 
 #### Weighted Data in Charts
 
@@ -367,7 +361,7 @@ Color-coded badges with hover tooltips:
 
 This ensures that:
 - Reverted commits (weight=0) don't inflate productivity metrics
-- De-prioritized categories (e.g., maintenance) don't overshadow strategic work
+- Low-weight commits don't overshadow high-impact work
 - Charts reflect actual business impact, not just volume of changes
 
 #### How the Toggle Works
@@ -409,7 +403,6 @@ Most endpoints now return additional weight-related fields when available:
 - `avg_weight` - Average commit weight (0-100)
 - `weight_efficiency_pct` - Weight efficiency percentage
 - `weighted_lines_added/deleted/changed` - Line metrics adjusted by commit weight
-- `category_weight` - Category weight configuration (0-100, only in category endpoints)
 
 These fields may be `undefined` or `null` in older data or when weights are not configured. Clients should handle these as optional fields with appropriate fallbacks.
 

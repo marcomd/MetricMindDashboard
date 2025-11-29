@@ -283,7 +283,7 @@ describe('API Routes - Monthly Commits', () => {
         total_commits: 45,
         total_lines_changed: 3500,
         effective_commits: 40.5,
-        category_weight: 90,
+        avg_weight: 90.0,
         weight_efficiency_pct: 90.0,
       },
       {
@@ -291,7 +291,7 @@ describe('API Routes - Monthly Commits', () => {
         total_commits: 35,
         total_lines_changed: 2800,
         effective_commits: 35.0,
-        category_weight: 100,
+        avg_weight: 100.0,
         weight_efficiency_pct: 100.0,
       },
       {
@@ -299,7 +299,7 @@ describe('API Routes - Monthly Commits', () => {
         total_commits: 70,
         total_lines_changed: 6200,
         effective_commits: 60.0,
-        category_weight: null,
+        avg_weight: 85.7,
         weight_efficiency_pct: 85.7,
       },
     ];
@@ -570,7 +570,7 @@ describe('API Routes - Monthly Commits', () => {
       const firstCategory = response.body.category_breakdown[0];
       expect(firstCategory).toHaveProperty('category');
       expect(firstCategory).toHaveProperty('total_commits');
-      expect(firstCategory).toHaveProperty('category_weight');
+      expect(firstCategory).toHaveProperty('avg_weight');
     });
   });
 });

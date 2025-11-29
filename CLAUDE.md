@@ -170,15 +170,15 @@ Base URL: `/api` (proxies to backend in dev, same origin in production)
 
 ## Weight Analysis System
 
-**Commit and Category Weighting**
+**Commit Weighting**
 
-The system supports commit and category weighting to prioritize meaningful work and accurately measure developer impact:
+The system supports commit weighting to prioritize meaningful work and accurately measure developer impact:
 
 **Backend Weight Calculation:**
 - Stored in database views and materialized views
-- `effective_commits = SUM(commit_weight * category_weight / 10000)`
+- `effective_commits = SUM(commit_weight) / 100`
 - `weight_efficiency_pct = (effective_commits / total_commits) * 100`
-- `weighted_lines_changed = SUM(lines_changed * commit_weight * category_weight / 10000)`
+- `weighted_lines_changed = SUM(lines_changed * commit_weight) / 100`
 
 **Frontend Weight Display:**
 - All charts default to `weighted_lines_changed/added/deleted` fields
@@ -203,9 +203,9 @@ import WeightBadge from '../components/WeightBadge';
 ```
 
 **Weight Impact Section (Content Analysis):**
-- Appears when overall efficiency < 100% or categories are de-prioritized
-- Overview cards: Overall weight efficiency, effective commits, de-prioritized categories count
-- De-prioritized categories table: Shows category, weight, total vs effective commits, discounted amount
+- Appears when overall efficiency < 100% or low weight categories exist
+- Overview cards: Overall weight efficiency, low weight categories count
+- Low weight categories table: Shows category, avg weight, total vs effective commits, discounted amount
 - Repository weight efficiency chart: Horizontal bar chart comparing efficiency across repositories
 - Only visible when weight analysis is relevant (gradual disclosure pattern)
 
@@ -215,7 +215,6 @@ All major queries now return weight-related fields when available:
 - `avg_weight` - Average commit weight (0-100)
 - `weight_efficiency_pct` - Efficiency percentage
 - `weighted_lines_changed/added/deleted` - Weighted line metrics
-- `category_weight` - Category weight configuration (0-100, only in category endpoints)
 
 These fields may be undefined in older data or when weights are not configured. Always handle as optional with appropriate fallbacks:
 ```javascript
@@ -799,12 +798,12 @@ Columns:
 - **Category**: Category name (or UNCATEGORIZED)
 - **Commits**: Total commits with weight badge if efficiency < 100%
 - **Lines Changed**: Total lines changed
-- **Category Weight**: Category priority percentage
+- **Avg Weight**: Average commit weight within the category
 
-**Color Coding** (Category Weight column):
-- Red (≤20%): De-prioritized category
-- Orange (21-50%): Partially de-prioritized category
-- Gray (>50% or 100%): Normal priority category
+**Color Coding** (Avg Weight column):
+- Red (≤20%): Low weight category
+- Orange (21-50%): Medium weight category
+- Gray (>50%): Normal weight category
 
 #### 7. Commit Details Table
 

@@ -58,7 +58,6 @@ interface RepoBreakdown {
 
 interface CategoryBreakdown {
   category: string;
-  category_weight: number;
   total_commits: number;
   effective_commits: number;
   avg_weight: number;
@@ -594,7 +593,7 @@ function PersonalPerformance(): JSX.Element {
                     Lines Changed
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Category Weight
+                    Avg Weight
                   </th>
                 </tr>
               </thead>
@@ -625,12 +624,12 @@ function PersonalPerformance(): JSX.Element {
                         {cat.total_lines_changed.toLocaleString()}
                       </td>
                       <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${
-                        cat.category_weight === null ? 'text-gray-600 dark:text-gray-400' :
-                        cat.category_weight <= 20 ? 'text-red-600 dark:text-red-400' :
-                        cat.category_weight <= 50 ? 'text-orange-600 dark:text-orange-400' :
+                        cat.avg_weight === null || cat.avg_weight === undefined ? 'text-gray-600 dark:text-gray-400' :
+                        cat.avg_weight <= 20 ? 'text-red-600 dark:text-red-400' :
+                        cat.avg_weight <= 50 ? 'text-orange-600 dark:text-orange-400' :
                         'text-gray-600 dark:text-gray-400'
                       }`}>
-                        {cat.category_weight !== null ? `${cat.category_weight}%` : 'N/A'}
+                        {cat.avg_weight !== null && cat.avg_weight !== undefined ? `${parseFloat(cat.avg_weight as any).toFixed(1)}%` : 'N/A'}
                       </td>
                     </tr>
                   );

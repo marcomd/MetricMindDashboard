@@ -5,6 +5,30 @@ All notable changes to Metric Mind Dashboard will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.0] - 2025-11-29
+
+### Changed
+- **Simplified Weight System**: Removed `category_weight` from the weight calculation system
+  - Effective commits now calculated as `SUM(commit_weight) / 100` (previously used `commit_weight × category_weight`)
+  - Removed dependency on `categories` table in API queries
+  - Simplified weight analysis to focus solely on individual commit weights
+- **Content Analysis Page**: "De-prioritized Categories" section renamed to "Low Weight Categories"
+  - Now shows categories with low average commit weight instead of separate category-level weights
+  - Section moved to bottom of page, after all charts
+- **Personal Performance Page**: "Category Weight" column renamed to "Avg Weight"
+  - Displays average commit weight per category instead of category-level weight configuration
+
+### Removed
+- `category_weight` field from all API responses (`/api/categories`, `/api/category-by-repo`, `/api/personal-performance`)
+- `LEFT JOIN categories` from filtered queries - improves query performance
+- Category-level weight configuration concept from the UI
+
+### Technical Details
+- Updated TypeScript interfaces in `ContentAnalysis.tsx` and `PersonalPerformance.tsx`
+- Modified 5 SQL queries in `server/routes/api.ts` to remove category_weight references
+- Updated test mocks and assertions in `api.test.ts`
+- Updated documentation in `CLAUDE.md` and `README.md`
+
 ## [1.8.1] - 2025-11-25
 
 ### Fixed
