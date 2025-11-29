@@ -5,6 +5,15 @@ All notable changes to Metric Mind Dashboard will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.1] - 2025-11-25
+
+### Fixed
+- **Commit Description Popup Positioning**: Fixed popup appearing off-screen when scrolled
+  - Removed scroll offset double-counting in position calculation (was adding scroll offset to viewport-relative coordinates)
+  - Added scroll event listener to automatically close popup when page scrolls
+  - Improved viewport boundary detection for better edge positioning
+  - Removed temporary debug console logs
+
 ## [1.8.0] - 2025-11-25
 
 ### Added

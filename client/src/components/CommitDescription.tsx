@@ -16,13 +16,9 @@ const CommitDescription: React.FC<CommitDescriptionProps> = ({ description }) =>
     return null;
   }
 
-  // Debug: log when component renders with description
-  console.log('CommitDescription rendered with:', description.substring(0, 50));
-
   const handleToggle = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    console.log('handleToggle clicked, isOpen:', isOpen);
 
     if (!isOpen && iconRef.current) {
       const rect = iconRef.current.getBoundingClientRect();
@@ -30,13 +26,14 @@ const CommitDescription: React.FC<CommitDescriptionProps> = ({ description }) =>
       const viewportHeight = window.innerHeight;
 
       // Calculate position (default: below and to the right)
-      let top = rect.bottom + window.scrollY + 8;
-      let left = rect.left + window.scrollX;
+      // Use viewport-relative coordinates (no scroll offset needed for fixed positioning)
+      let top = rect.bottom + 8;
+      let left = rect.left;
 
       // Adjust if too close to bottom
       const estimatedHeight = 200; // Approximate popup height
       if (rect.bottom + estimatedHeight > viewportHeight) {
-        top = rect.top + window.scrollY - estimatedHeight - 8;
+        top = rect.top - estimatedHeight - 8;
       }
 
       // Adjust if too close to right edge
@@ -67,6 +64,21 @@ const CommitDescription: React.FC<CommitDescriptionProps> = ({ description }) =>
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen]);
+
+  // Close popup when scrolling
+  useEffect(() => {
+    const handleScroll = () => {
+      if (isOpen) {
+        setIsOpen(false);
+      }
+    };
+
+    // Use capture phase to catch scroll events from any scrollable container
+    window.addEventListener('scroll', handleScroll, true);
+    return () => {
+      window.removeEventListener('scroll', handleScroll, true);
     };
   }, [isOpen]);
 
