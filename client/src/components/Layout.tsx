@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { LayoutProvider, useLayout } from '../contexts/LayoutContext';
 import Avatar from './Avatar';
 import {
   LayoutDashboard,
@@ -29,12 +30,13 @@ interface NavItem {
   icon: React.ComponentType<{ className?: string }>;
 }
 
-const Layout: React.FC = () => {
+const LayoutContent: React.FC = () => {
   const [darkMode, setDarkMode] = useState<boolean>(false);
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(true); // For mobile overlay
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false); // For desktop collapse
   const location = useLocation();
   const { user, logout } = useAuth();
+  const { fullWidth } = useLayout();
 
   // Initialize dark mode from localStorage
   useEffect(() => {
@@ -286,7 +288,7 @@ const Layout: React.FC = () => {
             pt-0 md:pt-0
           `}
         >
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className={`${fullWidth ? 'max-w-none' : 'max-w-7xl'} mx-auto px-4 sm:px-6 lg:px-8 py-8 transition-all duration-300`}>
             <Outlet />
           </div>
 
@@ -301,6 +303,14 @@ const Layout: React.FC = () => {
         </main>
       </div>
     </div>
+  );
+};
+
+const Layout: React.FC = () => {
+  return (
+    <LayoutProvider>
+      <LayoutContent />
+    </LayoutProvider>
   );
 };
 

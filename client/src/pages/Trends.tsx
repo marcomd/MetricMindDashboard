@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { TrendingUp, Code, Users, User, Lightbulb, Scale } from 'lucide-react';
+import { TrendingUp, Code, Users, User, Lightbulb, Scale, Maximize2, Minimize2 } from 'lucide-react';
 import { fetchRepos, fetchMonthlyTrends, fetchGlobalMonthlyTrends } from '../utils/api';
+import { useLayout } from '../contexts/LayoutContext';
 import LoadingSpinner from '../components/LoadingSpinner';
 import MonthlyCommitDetails from '../components/MonthlyCommitDetails';
 import {
@@ -41,6 +42,19 @@ function Trends(): JSX.Element {
   const [useWeightedData, setUseWeightedData] = useState<boolean>(true);
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState<boolean>(false);
+  const [isFullWidth, setIsFullWidth] = useState<boolean>(() => {
+    return localStorage.getItem('trendsFullWidth') === 'true';
+  });
+
+  // Layout context for full-width mode
+  const { setFullWidth } = useLayout();
+
+  // Sync full-width state with Layout context and localStorage
+  useEffect(() => {
+    setFullWidth(isFullWidth);
+    localStorage.setItem('trendsFullWidth', String(isFullWidth));
+    return () => setFullWidth(false); // Reset when leaving page
+  }, [isFullWidth, setFullWidth]);
 
   // Handle month selection from charts
   const handleMonthClick = (data: any) => {
@@ -130,13 +144,22 @@ function Trends(): JSX.Element {
     <div className="space-y-8 fade-in">
       {/* Header with Filters */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            Monthly Trends
-          </h2>
-          <p className="text-gray-600 dark:text-gray-400">
-            Track productivity over time
-          </p>
+        <div className="flex items-start gap-3">
+          <div>
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+              Monthly Trends
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400">
+              Track productivity over time
+            </p>
+          </div>
+          <button
+            onClick={() => setIsFullWidth(!isFullWidth)}
+            className="p-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors mt-1"
+            title={isFullWidth ? 'Exit full width' : 'Expand to full width'}
+          >
+            {isFullWidth ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
+          </button>
         </div>
         <div className="flex flex-col sm:flex-row gap-3">
           {/* Repository Selector */}

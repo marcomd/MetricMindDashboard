@@ -5,6 +5,21 @@ All notable changes to Metric Mind Dashboard will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.0] - 2025-11-29
+
+### Added
+- **Full-Width Toggle for Trends Page**: New button to expand charts to full screen width on large displays
+  - Icon-only toggle button (`Maximize2`/`Minimize2`) positioned next to page title
+  - Tooltip explains action on hover
+  - Preference persists via localStorage (`trendsFullWidth` key)
+  - Automatically resets to normal width when navigating away from Trends page
+  - Smooth 300ms transition when toggling between modes
+
+### Technical Details
+- Created `LayoutContext.tsx` for full-width state communication between pages and Layout
+- Updated `Layout.tsx` to conditionally apply `max-w-none` instead of `max-w-7xl` constraint
+- Added state management in `Trends.tsx` with localStorage persistence and cleanup on unmount
+
 ## [1.9.0] - 2025-11-29
 
 ### Changed
@@ -359,6 +374,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version History Summary
 
+- **1.10.0**: Full-width toggle for Trends page to utilize large displays
+- **1.9.0**: Simplified weight system by removing category_weight
+- **1.8.1**: Fixed commit description popup positioning issues
+- **1.8.0**: Commit description feature with interactive display
 - **1.7.0**: Automated database migration system with timestamp-based naming and rollback support
 - **1.6.0**: Commit Search & Management with AI tools tracking and edit capabilities
 - **1.5.0**: GitLab OAuth support with multi-provider linked accounts and self-hosted GitLab support
