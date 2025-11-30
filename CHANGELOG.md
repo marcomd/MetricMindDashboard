@@ -5,6 +5,25 @@ All notable changes to Metric Mind Dashboard will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.0] - 2025-11-30
+
+### Added
+- **"Use Weighted Data" Toggle for Before/After Analysis**: New toggle to switch between raw and weighted metrics
+  - Affects 3 of 4 metrics: Commits/Month, Lines/Commit, Commits/Committer
+  - Contributors metric unchanged (count of people cannot be weighted)
+  - Labels update dynamically to indicate weighted mode (e.g., "Eff. Commits/Month", "Wtd. Lines/Commit")
+  - Chart and metric cards update in real-time when toggled
+  - Insights section reflects weighted calculations when enabled
+
+### Fixed
+- **Repository Default**: Before/After page now defaults to "All Repositories" instead of first repository in list
+- **After Period Start Date**: Now correctly defaults to first day of previous month (was incorrectly setting first day of current month)
+
+### Technical Details
+- Backend: Added `avg_weighted_lines_per_commit` and `avg_effective_commits_per_committer` fields to `/api/before-after` endpoint
+- Frontend: Added helper functions `getLinesPerCommitValue()` and `getCommitsPerCommitterValue()` for weighted data selection
+- Updated `PeriodData` TypeScript interface with new optional weighted fields
+
 ## [1.10.0] - 2025-11-29
 
 ### Added

@@ -283,7 +283,9 @@ router.get('/before-after/:repoName', async (req: Request, res: Response) => {
           AVG(effective_commits)::numeric as avg_effective_commits_per_month,
           AVG(avg_weight)::numeric as avg_weight,
           AVG(unique_authors)::numeric as avg_authors,
-          AVG(avg_commits_per_author)::numeric as avg_commits_per_committer
+          AVG(avg_commits_per_author)::numeric as avg_commits_per_committer,
+          AVG(CASE WHEN effective_commits > 0 THEN weighted_lines_changed / effective_commits ELSE 0 END)::numeric as avg_weighted_lines_per_commit,
+          AVG(CASE WHEN unique_authors > 0 THEN effective_commits / unique_authors ELSE 0 END)::numeric as avg_effective_commits_per_committer
         FROM mv_monthly_stats_by_repo
         WHERE month_start_date BETWEEN $1 AND $2
       `, [beforeStart, beforeEnd]);
@@ -295,7 +297,9 @@ router.get('/before-after/:repoName', async (req: Request, res: Response) => {
           AVG(effective_commits)::numeric as avg_effective_commits_per_month,
           AVG(avg_weight)::numeric as avg_weight,
           AVG(unique_authors)::numeric as avg_authors,
-          AVG(avg_commits_per_author)::numeric as avg_commits_per_committer
+          AVG(avg_commits_per_author)::numeric as avg_commits_per_committer,
+          AVG(CASE WHEN effective_commits > 0 THEN weighted_lines_changed / effective_commits ELSE 0 END)::numeric as avg_weighted_lines_per_commit,
+          AVG(CASE WHEN unique_authors > 0 THEN effective_commits / unique_authors ELSE 0 END)::numeric as avg_effective_commits_per_committer
         FROM mv_monthly_stats_by_repo
         WHERE month_start_date BETWEEN $1 AND $2
       `, [afterStart, afterEnd]);
@@ -308,7 +312,9 @@ router.get('/before-after/:repoName', async (req: Request, res: Response) => {
           AVG(effective_commits)::numeric as avg_effective_commits_per_month,
           AVG(avg_weight)::numeric as avg_weight,
           AVG(unique_authors)::numeric as avg_authors,
-          AVG(avg_commits_per_author)::numeric as avg_commits_per_committer
+          AVG(avg_commits_per_author)::numeric as avg_commits_per_committer,
+          AVG(CASE WHEN effective_commits > 0 THEN weighted_lines_changed / effective_commits ELSE 0 END)::numeric as avg_weighted_lines_per_commit,
+          AVG(CASE WHEN unique_authors > 0 THEN effective_commits / unique_authors ELSE 0 END)::numeric as avg_effective_commits_per_committer
         FROM mv_monthly_stats_by_repo
         WHERE repository_name = $1
           AND month_start_date BETWEEN $2 AND $3
@@ -321,7 +327,9 @@ router.get('/before-after/:repoName', async (req: Request, res: Response) => {
           AVG(effective_commits)::numeric as avg_effective_commits_per_month,
           AVG(avg_weight)::numeric as avg_weight,
           AVG(unique_authors)::numeric as avg_authors,
-          AVG(avg_commits_per_author)::numeric as avg_commits_per_committer
+          AVG(avg_commits_per_author)::numeric as avg_commits_per_committer,
+          AVG(CASE WHEN effective_commits > 0 THEN weighted_lines_changed / effective_commits ELSE 0 END)::numeric as avg_weighted_lines_per_commit,
+          AVG(CASE WHEN unique_authors > 0 THEN effective_commits / unique_authors ELSE 0 END)::numeric as avg_effective_commits_per_committer
         FROM mv_monthly_stats_by_repo
         WHERE repository_name = $1
           AND month_start_date BETWEEN $2 AND $3

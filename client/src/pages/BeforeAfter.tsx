@@ -3,6 +3,7 @@ import { fetchRepos, fetchBeforeAfter } from '../utils/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { addMonths } from '../utils/dateFormat';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { Scale } from 'lucide-react';
 
 interface Repository {
   name: string;
@@ -15,6 +16,8 @@ interface PeriodData {
   avg_lines_per_commit: string;
   avg_authors: string;
   avg_commits_per_committer: string;
+  avg_weighted_lines_per_commit?: string;
+  avg_effective_commits_per_committer?: string;
 }
 
 interface BeforeAfterData {
@@ -43,7 +46,7 @@ interface CustomTooltipProps {
 
 const BeforeAfter = (): JSX.Element => {
   const [repos, setRepos] = useState<Repository[]>([]);
-  const [selectedRepo, setSelectedRepo] = useState<string>('');
+  const [selectedRepo, setSelectedRepo] = useState<string>('all');
   const [beforeStart, setBeforeStart] = useState<string>('');
   const [beforeEnd, setBeforeEnd] = useState<string>('');
   const [afterStart, setAfterStart] = useState<string>('');
@@ -52,15 +55,13 @@ const BeforeAfter = (): JSX.Element => {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [hasAnalyzed, setHasAnalyzed] = useState<boolean>(false);
+  const [useWeightedData, setUseWeightedData] = useState<boolean>(true);
 
   // Load repositories on mount
   useEffect(() => {
     fetchRepos()
       .then(res => {
         setRepos(res.data);
-        if (res.data.length > 0) {
-          setSelectedRepo(res.data[0].name);
-        }
       })
       .catch(err => {
         console.error('Error fetching repositories:', err);
@@ -85,13 +86,13 @@ const BeforeAfter = (): JSX.Element => {
     const lastDayOfPrevMonth = new Date(today.getFullYear(), today.getMonth(), 0);
     const afterEndISO = formatLocalDate(lastDayOfPrevMonth);
 
-    // After Start: First day of current month, minus 12 months
-    // If today is November 9, 2025 -> November 1, 2025 - 12 months = November 1, 2024
-    const afterStartDate = new Date(today.getFullYear(), today.getMonth() - 12, 1);
+    // After Start: First day of previous month
+    // If today is November 29, 2025 -> October 1, 2025
+    const afterStartDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
     const afterStartISO = formatLocalDate(afterStartDate);
 
     // Before period: Same dates but 1 year earlier
-    const beforeStartDate = new Date(today.getFullYear() - 1, today.getMonth() - 12, 1);
+    const beforeStartDate = new Date(today.getFullYear() - 1, today.getMonth() - 1, 1);
     const beforeStartISO = formatLocalDate(beforeStartDate);
 
     const beforeEndDate = new Date(today.getFullYear() - 1, today.getMonth(), 0);
@@ -176,19 +177,46 @@ const BeforeAfter = (): JSX.Element => {
     return parseFloat(change) >= 0 ? '↑' : '↓';
   };
 
+  // Helper to get commits value based on weighted toggle
+  const getCommitsValue = (periodData: PeriodData | undefined): number => {
+    if (!periodData) return 0;
+    if (useWeightedData && periodData.avg_effective_commits_per_month !== undefined) {
+      return parseFloat(periodData.avg_effective_commits_per_month) || 0;
+    }
+    return parseFloat(periodData.avg_commits_per_month) || 0;
+  };
+
+  // Helper to get lines per commit value based on weighted toggle
+  const getLinesPerCommitValue = (periodData: PeriodData | undefined): number => {
+    if (!periodData) return 0;
+    if (useWeightedData && periodData.avg_weighted_lines_per_commit !== undefined) {
+      return parseFloat(periodData.avg_weighted_lines_per_commit) || 0;
+    }
+    return parseFloat(periodData.avg_lines_per_commit) || 0;
+  };
+
+  // Helper to get commits per committer value based on weighted toggle
+  const getCommitsPerCommitterValue = (periodData: PeriodData | undefined): number => {
+    if (!periodData) return 0;
+    if (useWeightedData && periodData.avg_effective_commits_per_committer !== undefined) {
+      return parseFloat(periodData.avg_effective_commits_per_committer) || 0;
+    }
+    return parseFloat(periodData.avg_commits_per_committer) || 0;
+  };
+
   // Prepare chart data
   const getChartData = (): ChartDataPoint[] => {
     if (!data) return [];
     return [
       {
-        metric: 'Commits/Month',
-        Before: parseFloat(data.before?.avg_commits_per_month) || 0,
-        After: parseFloat(data.after?.avg_commits_per_month) || 0,
+        metric: useWeightedData ? 'Eff. Commits/Month' : 'Commits/Month',
+        Before: getCommitsValue(data.before),
+        After: getCommitsValue(data.after),
       },
       {
-        metric: 'Lines/Commit',
-        Before: parseFloat(data.before?.avg_lines_per_commit) || 0,
-        After: parseFloat(data.after?.avg_lines_per_commit) || 0,
+        metric: useWeightedData ? 'Wtd. Lines/Commit' : 'Lines/Commit',
+        Before: getLinesPerCommitValue(data.before),
+        After: getLinesPerCommitValue(data.after),
       },
       {
         metric: 'Contributors',
@@ -196,9 +224,9 @@ const BeforeAfter = (): JSX.Element => {
         After: parseFloat(data.after?.avg_authors) || 0,
       },
       {
-        metric: 'Commits/Committer',
-        Before: parseFloat(data.before?.avg_commits_per_committer) || 0,
-        After: parseFloat(data.after?.avg_commits_per_committer) || 0,
+        metric: useWeightedData ? 'Eff. Commits/Committer' : 'Commits/Committer',
+        Before: getCommitsPerCommitterValue(data.before),
+        After: getCommitsPerCommitterValue(data.after),
       },
     ];
   };
@@ -247,23 +275,39 @@ const BeforeAfter = (): JSX.Element => {
           Configure Analysis
         </h3>
 
-        {/* Repository Selector */}
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Repository
-          </label>
-          <select
-            value={selectedRepo}
-            onChange={(e) => setSelectedRepo(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
-          >
-            <option value="all">All Repositories</option>
-            {repos.map(repo => (
-              <option key={repo.name} value={repo.name}>
-                {repo.name}
-              </option>
-            ))}
-          </select>
+        {/* Repository Selector and Weighted Data Toggle */}
+        <div className="flex flex-col sm:flex-row gap-4 mb-6">
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Repository
+            </label>
+            <select
+              value={selectedRepo}
+              onChange={(e) => setSelectedRepo(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
+            >
+              <option value="all">All Repositories</option>
+              {repos.map(repo => (
+                <option key={repo.name} value={repo.name}>
+                  {repo.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Use Weighted Data Toggle */}
+          <div className="flex items-end">
+            <label className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-300">
+              <input
+                type="checkbox"
+                checked={useWeightedData}
+                onChange={(e) => setUseWeightedData(e.target.checked)}
+                className="w-4 h-4 text-primary-600 bg-gray-100 border-gray-300 rounded focus:ring-primary-500 focus:ring-2"
+              />
+              <Scale className="w-4 h-4" />
+              <span className="text-sm font-medium whitespace-nowrap">Use Weighted Data</span>
+            </label>
+          </div>
         </div>
 
         {/* Date Range Pickers */}
@@ -414,25 +458,25 @@ const BeforeAfter = (): JSX.Element => {
               <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border-2 border-blue-200 dark:border-blue-800">
                 <h4 className="text-sm font-medium text-blue-900 dark:text-blue-300 mb-2">Before</h4>
                 <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
-                  {parseFloat(data.before?.avg_commits_per_month || '0').toFixed(1)}
+                  {getCommitsValue(data.before).toFixed(1)}
                 </p>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">commits/month</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{useWeightedData ? 'eff. commits/month' : 'commits/month'}</p>
               </div>
               <div className="text-center py-2">
                 <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gray-100 dark:bg-gray-800">
-                  <span className={`text-2xl font-bold ${getChangeColor(calculateChange(data.before?.avg_commits_per_month, data.after?.avg_commits_per_month))}`}>
-                    {getChangeArrow(calculateChange(data.before?.avg_commits_per_month, data.after?.avg_commits_per_month))}
-                    {Math.abs(parseFloat(calculateChange(data.before?.avg_commits_per_month, data.after?.avg_commits_per_month)))}%
+                  <span className={`text-2xl font-bold ${getChangeColor(calculateChange(getCommitsValue(data.before), getCommitsValue(data.after)))}`}>
+                    {getChangeArrow(calculateChange(getCommitsValue(data.before), getCommitsValue(data.after)))}
+                    {Math.abs(parseFloat(calculateChange(getCommitsValue(data.before), getCommitsValue(data.after))))}%
                   </span>
                 </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">Commits per Month</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">{useWeightedData ? 'Eff. Commits per Month' : 'Commits per Month'}</p>
               </div>
               <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border-2 border-purple-200 dark:border-purple-800">
                 <h4 className="text-sm font-medium text-purple-900 dark:text-purple-300 mb-2">After</h4>
                 <p className="text-3xl font-bold text-purple-600 dark:text-purple-400">
-                  {parseFloat(data.after?.avg_commits_per_month || '0').toFixed(1)}
+                  {getCommitsValue(data.after).toFixed(1)}
                 </p>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">commits/month</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{useWeightedData ? 'eff. commits/month' : 'commits/month'}</p>
               </div>
             </div>
 
@@ -441,25 +485,25 @@ const BeforeAfter = (): JSX.Element => {
               <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border-2 border-blue-200 dark:border-blue-800">
                 <h4 className="text-sm font-medium text-blue-900 dark:text-blue-300 mb-2">Before</h4>
                 <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
-                  {parseFloat(data.before?.avg_lines_per_commit || '0').toFixed(1)}
+                  {getLinesPerCommitValue(data.before).toFixed(1)}
                 </p>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">lines/commit</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{useWeightedData ? 'wtd. lines/commit' : 'lines/commit'}</p>
               </div>
               <div className="text-center py-2">
                 <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gray-100 dark:bg-gray-800">
-                  <span className={`text-2xl font-bold ${getChangeColor(calculateChange(data.before?.avg_lines_per_commit, data.after?.avg_lines_per_commit))}`}>
-                    {getChangeArrow(calculateChange(data.before?.avg_lines_per_commit, data.after?.avg_lines_per_commit))}
-                    {Math.abs(parseFloat(calculateChange(data.before?.avg_lines_per_commit, data.after?.avg_lines_per_commit)))}%
+                  <span className={`text-2xl font-bold ${getChangeColor(calculateChange(getLinesPerCommitValue(data.before), getLinesPerCommitValue(data.after)))}`}>
+                    {getChangeArrow(calculateChange(getLinesPerCommitValue(data.before), getLinesPerCommitValue(data.after)))}
+                    {Math.abs(parseFloat(calculateChange(getLinesPerCommitValue(data.before), getLinesPerCommitValue(data.after))))}%
                   </span>
                 </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">Lines per Commit</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">{useWeightedData ? 'Wtd. Lines per Commit' : 'Lines per Commit'}</p>
               </div>
               <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border-2 border-purple-200 dark:border-purple-800">
                 <h4 className="text-sm font-medium text-purple-900 dark:text-purple-300 mb-2">After</h4>
                 <p className="text-3xl font-bold text-purple-600 dark:text-purple-400">
-                  {parseFloat(data.after?.avg_lines_per_commit || '0').toFixed(1)}
+                  {getLinesPerCommitValue(data.after).toFixed(1)}
                 </p>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">lines/commit</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{useWeightedData ? 'wtd. lines/commit' : 'lines/commit'}</p>
               </div>
             </div>
 
@@ -495,25 +539,25 @@ const BeforeAfter = (): JSX.Element => {
               <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border-2 border-blue-200 dark:border-blue-800">
                 <h4 className="text-sm font-medium text-blue-900 dark:text-blue-300 mb-2">Before</h4>
                 <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
-                  {parseFloat(data.before?.avg_commits_per_committer || '0').toFixed(1)}
+                  {getCommitsPerCommitterValue(data.before).toFixed(1)}
                 </p>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">commits/committer</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{useWeightedData ? 'eff. commits/committer' : 'commits/committer'}</p>
               </div>
               <div className="text-center py-2">
                 <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gray-100 dark:bg-gray-800">
-                  <span className={`text-2xl font-bold ${getChangeColor(calculateChange(data.before?.avg_commits_per_committer, data.after?.avg_commits_per_committer))}`}>
-                    {getChangeArrow(calculateChange(data.before?.avg_commits_per_committer, data.after?.avg_commits_per_committer))}
-                    {Math.abs(parseFloat(calculateChange(data.before?.avg_commits_per_committer, data.after?.avg_commits_per_committer)))}%
+                  <span className={`text-2xl font-bold ${getChangeColor(calculateChange(getCommitsPerCommitterValue(data.before), getCommitsPerCommitterValue(data.after)))}`}>
+                    {getChangeArrow(calculateChange(getCommitsPerCommitterValue(data.before), getCommitsPerCommitterValue(data.after)))}
+                    {Math.abs(parseFloat(calculateChange(getCommitsPerCommitterValue(data.before), getCommitsPerCommitterValue(data.after))))}%
                   </span>
                 </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">Commits per Committer</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">{useWeightedData ? 'Eff. Commits per Committer' : 'Commits per Committer'}</p>
               </div>
               <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border-2 border-purple-200 dark:border-purple-800">
                 <h4 className="text-sm font-medium text-purple-900 dark:text-purple-300 mb-2">After</h4>
                 <p className="text-3xl font-bold text-purple-600 dark:text-purple-400">
-                  {parseFloat(data.after?.avg_commits_per_committer || '0').toFixed(1)}
+                  {getCommitsPerCommitterValue(data.after).toFixed(1)}
                 </p>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">commits/committer</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{useWeightedData ? 'eff. commits/committer' : 'commits/committer'}</p>
               </div>
             </div>
           </div>
@@ -552,18 +596,18 @@ const BeforeAfter = (): JSX.Element => {
               <p className="flex items-start gap-2">
                 <span className="text-blue-500 mt-1">•</span>
                 <span>
-                  Commit frequency {parseFloat(calculateChange(data.before?.avg_commits_per_month, data.after?.avg_commits_per_month)) >= 0 ? 'increased' : 'decreased'} by{' '}
-                  <strong className={getChangeColor(calculateChange(data.before?.avg_commits_per_month, data.after?.avg_commits_per_month))}>
-                    {Math.abs(parseFloat(calculateChange(data.before?.avg_commits_per_month, data.after?.avg_commits_per_month)))}%
+                  {useWeightedData ? 'Effective commit' : 'Commit'} frequency {parseFloat(calculateChange(getCommitsValue(data.before), getCommitsValue(data.after))) >= 0 ? 'increased' : 'decreased'} by{' '}
+                  <strong className={getChangeColor(calculateChange(getCommitsValue(data.before), getCommitsValue(data.after)))}>
+                    {Math.abs(parseFloat(calculateChange(getCommitsValue(data.before), getCommitsValue(data.after))))}%
                   </strong>
                 </span>
               </p>
               <p className="flex items-start gap-2">
                 <span className="text-purple-500 mt-1">•</span>
                 <span>
-                  Code change size {parseFloat(calculateChange(data.before?.avg_lines_per_commit, data.after?.avg_lines_per_commit)) >= 0 ? 'increased' : 'decreased'} by{' '}
-                  <strong className={getChangeColor(calculateChange(data.before?.avg_lines_per_commit, data.after?.avg_lines_per_commit))}>
-                    {Math.abs(parseFloat(calculateChange(data.before?.avg_lines_per_commit, data.after?.avg_lines_per_commit)))}%
+                  {useWeightedData ? 'Weighted code' : 'Code'} change size {parseFloat(calculateChange(getLinesPerCommitValue(data.before), getLinesPerCommitValue(data.after))) >= 0 ? 'increased' : 'decreased'} by{' '}
+                  <strong className={getChangeColor(calculateChange(getLinesPerCommitValue(data.before), getLinesPerCommitValue(data.after)))}>
+                    {Math.abs(parseFloat(calculateChange(getLinesPerCommitValue(data.before), getLinesPerCommitValue(data.after))))}%
                   </strong>
                 </span>
               </p>

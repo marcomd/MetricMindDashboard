@@ -223,17 +223,18 @@ The dashboard includes the following pages:
   - **Purpose**: Measure impact of changes (new tools, processes, team changes)
   - **Key Components**:
     - Repository selector (specific repository or "All Repositories" for global analysis)
+    - "Use Weighted Data" toggle to switch between raw and weighted metrics
     - Date range pickers for "Before" and "After" periods
     - Quick-action buttons (→ 3/6/12 months) to auto-set After period dates
     - Split-screen comparison cards showing metrics side-by-side
     - Percentage change indicators (↑ ↓) with color coding
     - Visualization comparing the two periods
     - Automated insights section highlighting key changes
-  - **Metrics to Compare**:
-    - Average commits per month
-    - Average lines changed per commit
-    - Average contributors per month
-    - Average commits per committer (productivity metric)
+  - **Metrics to Compare** (toggle between raw/weighted):
+    - Average commits per month (or effective commits when weighted)
+    - Average lines changed per commit (or weighted lines when weighted)
+    - Average contributors per month (not affected by weighting)
+    - Average commits per committer (or effective commits per committer when weighted)
   - **User Experience**:
     - Clear visual separation of "before" vs "after"
     - Prominent percentage changes (green for improvement, red for decline)

@@ -573,4 +573,150 @@ describe('API Routes - Monthly Commits', () => {
       expect(firstCategory).toHaveProperty('avg_weight');
     });
   });
+
+  describe('GET /api/before-after/:repoName', () => {
+    const mockBeforeData = {
+      avg_lines_per_commit: '125.5',
+      avg_commits_per_month: '45.2',
+      avg_effective_commits_per_month: '40.8',
+      avg_weight: '90.3',
+      avg_authors: '5.0',
+      avg_commits_per_committer: '9.04',
+      avg_weighted_lines_per_commit: '113.0',
+      avg_effective_commits_per_committer: '8.16',
+    };
+
+    const mockAfterData = {
+      avg_lines_per_commit: '98.3',
+      avg_commits_per_month: '62.5',
+      avg_effective_commits_per_month: '58.1',
+      avg_weight: '93.0',
+      avg_authors: '6.5',
+      avg_commits_per_committer: '9.62',
+      avg_weighted_lines_per_commit: '91.4',
+      avg_effective_commits_per_committer: '8.94',
+    };
+
+    it('should return before and after period data for a specific repository', async () => {
+      vi.mocked(pool.query)
+        .mockResolvedValueOnce({ rows: [mockBeforeData], command: 'SELECT', rowCount: 1, oid: 0, fields: [] })
+        .mockResolvedValueOnce({ rows: [mockAfterData], command: 'SELECT', rowCount: 1, oid: 0, fields: [] });
+
+      const response = await request(app)
+        .get('/api/before-after/test-repo')
+        .query({
+          beforeStart: '2023-01-01',
+          beforeEnd: '2023-12-31',
+          afterStart: '2024-01-01',
+          afterEnd: '2024-12-31',
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('before');
+      expect(response.body).toHaveProperty('after');
+      expect(response.body.before).toEqual(mockBeforeData);
+      expect(response.body.after).toEqual(mockAfterData);
+      expect(pool.query).toHaveBeenCalledTimes(2);
+    });
+
+    it('should return data for all repositories when repoName is "all"', async () => {
+      vi.mocked(pool.query)
+        .mockResolvedValueOnce({ rows: [mockBeforeData], command: 'SELECT', rowCount: 1, oid: 0, fields: [] })
+        .mockResolvedValueOnce({ rows: [mockAfterData], command: 'SELECT', rowCount: 1, oid: 0, fields: [] });
+
+      const response = await request(app)
+        .get('/api/before-after/all')
+        .query({
+          beforeStart: '2023-01-01',
+          beforeEnd: '2023-12-31',
+          afterStart: '2024-01-01',
+          afterEnd: '2024-12-31',
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('before');
+      expect(response.body).toHaveProperty('after');
+
+      // Verify query does not filter by repository
+      const queryCalls = vi.mocked(pool.query).mock.calls;
+      const hasRepoFilter = queryCalls.some(call => {
+        const params = call[1] as any[];
+        return params && params.includes('all');
+      });
+      expect(hasRepoFilter).toBe(false);
+    });
+
+    it('should include weighted fields in the response', async () => {
+      vi.mocked(pool.query)
+        .mockResolvedValueOnce({ rows: [mockBeforeData], command: 'SELECT', rowCount: 1, oid: 0, fields: [] })
+        .mockResolvedValueOnce({ rows: [mockAfterData], command: 'SELECT', rowCount: 1, oid: 0, fields: [] });
+
+      const response = await request(app)
+        .get('/api/before-after/test-repo')
+        .query({
+          beforeStart: '2023-01-01',
+          beforeEnd: '2023-12-31',
+          afterStart: '2024-01-01',
+          afterEnd: '2024-12-31',
+        });
+
+      expect(response.status).toBe(200);
+
+      // Verify weighted fields are present
+      expect(response.body.before).toHaveProperty('avg_effective_commits_per_month');
+      expect(response.body.before).toHaveProperty('avg_weighted_lines_per_commit');
+      expect(response.body.before).toHaveProperty('avg_effective_commits_per_committer');
+      expect(response.body.before).toHaveProperty('avg_weight');
+
+      expect(response.body.after).toHaveProperty('avg_effective_commits_per_month');
+      expect(response.body.after).toHaveProperty('avg_weighted_lines_per_commit');
+      expect(response.body.after).toHaveProperty('avg_effective_commits_per_committer');
+      expect(response.body.after).toHaveProperty('avg_weight');
+    });
+
+    it('should include all required unweighted fields', async () => {
+      vi.mocked(pool.query)
+        .mockResolvedValueOnce({ rows: [mockBeforeData], command: 'SELECT', rowCount: 1, oid: 0, fields: [] })
+        .mockResolvedValueOnce({ rows: [mockAfterData], command: 'SELECT', rowCount: 1, oid: 0, fields: [] });
+
+      const response = await request(app)
+        .get('/api/before-after/test-repo')
+        .query({
+          beforeStart: '2023-01-01',
+          beforeEnd: '2023-12-31',
+          afterStart: '2024-01-01',
+          afterEnd: '2024-12-31',
+        });
+
+      expect(response.status).toBe(200);
+
+      // Verify unweighted fields are present
+      expect(response.body.before).toHaveProperty('avg_commits_per_month');
+      expect(response.body.before).toHaveProperty('avg_lines_per_commit');
+      expect(response.body.before).toHaveProperty('avg_authors');
+      expect(response.body.before).toHaveProperty('avg_commits_per_committer');
+
+      expect(response.body.after).toHaveProperty('avg_commits_per_month');
+      expect(response.body.after).toHaveProperty('avg_lines_per_commit');
+      expect(response.body.after).toHaveProperty('avg_authors');
+      expect(response.body.after).toHaveProperty('avg_commits_per_committer');
+    });
+
+    it('should handle database errors gracefully', async () => {
+      vi.mocked(pool.query).mockRejectedValueOnce(new Error('Database connection failed'));
+
+      const response = await request(app)
+        .get('/api/before-after/test-repo')
+        .query({
+          beforeStart: '2023-01-01',
+          beforeEnd: '2023-12-31',
+          afterStart: '2024-01-01',
+          afterEnd: '2024-12-31',
+        });
+
+      expect(response.status).toBe(500);
+      expect(response.body).toHaveProperty('error');
+      expect(response.body.error).toContain('Failed to perform before/after analysis');
+    });
+  });
 });
