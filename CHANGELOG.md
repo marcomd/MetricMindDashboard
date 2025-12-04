@@ -5,6 +5,19 @@ All notable changes to Metric Mind Dashboard will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.1] - 2025-12-04
+
+Security Audit & Update Complete
+
+### Fixed
+- **Security fixes**:
+  - glob upgraded to 10.5.0+ (fixed command injection)
+  - js-yaml upgraded to 4.1.1+ (fixed prototype pollution)
+- **Updated packages (minor/patch)**:
+  - Root: @playwright/test, @types/express, nodemon, tsx, vitest, and transitive deps
+  - Client: vitest, vite, and transitive deps
+
+
 ## [1.11.0] - 2025-11-30
 
 ### Added
