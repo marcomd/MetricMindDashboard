@@ -3,7 +3,7 @@ import passport from 'passport';
 import { Strategy as GoogleStrategy, Profile as GoogleProfile, VerifyCallback as GoogleVerifyCallback } from 'passport-google-oauth20';
 import { Strategy as GitHubStrategy, Profile as GitHubProfile } from 'passport-github2';
 import { Strategy as GitLabStrategy } from 'passport-gitlab2';
-import { findUserByProviderId, upsertUser } from '../db.js';
+import { upsertUser } from '../db.js';
 
 interface User {
   id: number;

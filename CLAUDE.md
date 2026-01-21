@@ -694,6 +694,7 @@ PGPASSWORD=your_password
 PORT=3000
 NODE_ENV=development
 CLIENT_URL=http://localhost:5173
+# Required: frontend origin used for OAuth redirects and CORS
 
 # Google OAuth2
 GOOGLE_CLIENT_ID=your_google_client_id_here

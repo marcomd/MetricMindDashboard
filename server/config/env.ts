@@ -17,6 +17,13 @@ export interface EnvConfig {
   GOOGLE_CLIENT_ID?: string;
   GOOGLE_CLIENT_SECRET?: string;
   GOOGLE_CALLBACK_URL?: string;
+  GITHUB_CLIENT_ID?: string;
+  GITHUB_CLIENT_SECRET?: string;
+  GITHUB_CALLBACK_URL?: string;
+  GITLAB_CLIENT_ID?: string;
+  GITLAB_CLIENT_SECRET?: string;
+  GITLAB_CALLBACK_URL?: string;
+  GITLAB_BASE_URL?: string;
   JWT_SECRET?: string;
   JWT_EXPIRES_IN?: string;
   ALLOWED_DOMAINS?: string;

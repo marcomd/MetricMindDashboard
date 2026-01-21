@@ -5,8 +5,17 @@ import { User } from '../db.js';
 
 const router = express.Router();
 
-const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
+const CLIENT_URL = process.env.CLIENT_URL;
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+
+const requireClientUrl = (res: Response): string | null => {
+  if (!CLIENT_URL) {
+    res.status(500).send('CLIENT_URL is not set');
+    return null;
+  }
+
+  return CLIENT_URL;
+};
 
 /**
  * GET /auth/google
@@ -27,8 +36,13 @@ router.get('/google/callback',
     failureRedirect: '/auth/failure'
   }),
   (req: Request, res: Response) => {
+    const clientUrl = requireClientUrl(res);
+    if (!clientUrl) {
+      return;
+    }
+
     if (!req.user) {
-      return res.redirect(`${CLIENT_URL}/unauthorized`);
+      return res.redirect(`${clientUrl}/unauthorized`);
     }
 
     // Generate JWT token
@@ -43,7 +57,7 @@ router.get('/google/callback',
     });
 
     // Redirect to client dashboard
-    res.redirect(CLIENT_URL);
+    res.redirect(clientUrl);
   }
 );
 
@@ -66,8 +80,13 @@ router.get('/github/callback',
     failureRedirect: '/auth/failure'
   }),
   (req: Request, res: Response) => {
+    const clientUrl = requireClientUrl(res);
+    if (!clientUrl) {
+      return;
+    }
+
     if (!req.user) {
-      return res.redirect(`${CLIENT_URL}/unauthorized`);
+      return res.redirect(`${clientUrl}/unauthorized`);
     }
 
     // Generate JWT token
@@ -82,7 +101,7 @@ router.get('/github/callback',
     });
 
     // Redirect to client dashboard
-    res.redirect(CLIENT_URL);
+    res.redirect(clientUrl);
   }
 );
 
@@ -104,8 +123,13 @@ router.get('/gitlab/callback',
     failureRedirect: '/auth/failure'
   }),
   (req: Request, res: Response) => {
+    const clientUrl = requireClientUrl(res);
+    if (!clientUrl) {
+      return;
+    }
+
     if (!req.user) {
-      return res.redirect(`${CLIENT_URL}/unauthorized`);
+      return res.redirect(`${clientUrl}/unauthorized`);
     }
 
     // Generate JWT token
@@ -120,7 +144,7 @@ router.get('/gitlab/callback',
     });
 
     // Redirect to client dashboard
-    res.redirect(CLIENT_URL);
+    res.redirect(clientUrl);
   }
 );
 
@@ -129,7 +153,12 @@ router.get('/gitlab/callback',
  * Handles authentication failures
  */
 router.get('/failure', (req: Request, res: Response) => {
-  res.redirect(`${CLIENT_URL}/unauthorized`);
+  const clientUrl = requireClientUrl(res);
+  if (!clientUrl) {
+    return;
+  }
+
+  res.redirect(`${clientUrl}/unauthorized`);
 });
 
 /**
