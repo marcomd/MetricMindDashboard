@@ -38,7 +38,8 @@ const CommitSearch = () => {
     author: '',
     dateFrom: '',
     dateTo: '',
-    hash: ''
+    hash: '',
+    search: ''
   });
 
   // Edit Modal State
@@ -170,14 +171,26 @@ const CommitSearch = () => {
 
           <div>
             <label htmlFor="hash-input" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Commit Hash</label>
+            <input
+              id="hash-input"
+              type="text"
+              className="w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5"
+              placeholder="e.g. 7b3f1a"
+              value={searchParams.hash}
+              onChange={(e) => setSearchParams({ ...searchParams, hash: e.target.value })}
+            />
+          </div>
+
+          <div className="md:col-span-2 lg:col-span-5">
+            <label htmlFor="search-input" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Message Search</label>
             <div className="flex gap-2">
               <input
-                id="hash-input"
+                id="search-input"
                 type="text"
                 className="w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5"
-                placeholder="e.g. 7b3f1a"
-                value={searchParams.hash}
-                onChange={(e) => setSearchParams({ ...searchParams, hash: e.target.value })}
+                placeholder="Search in subject and description..."
+                value={searchParams.search}
+                onChange={(e) => setSearchParams({ ...searchParams, search: e.target.value })}
               />
               <button
                 type="submit"

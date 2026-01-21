@@ -1,6 +1,6 @@
 {
   "name": "metric-mind-dashboard",
-  "version": "1.11.2",
+  "version": "1.11.3",
   "description": "AI-driven developer productivity analytics dashboard",
   "type": "module",
   "scripts": {

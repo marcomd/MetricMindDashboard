@@ -288,6 +288,10 @@ The dashboard includes the following pages:
   - **Purpose**: Search and manage individual commits
   - **Key Components**:
     - Advanced search filters (Repository, Author, Date Range, Hash)
+    - **Message Search**: Text search across commit subjects and descriptions
+      - Case-insensitive partial matching
+      - Searches in both subject (title) and description (body)
+      - Works alongside all other filters
     - Interactive results table with sortable columns
     - **Weight Indicator**: Visual display of commit weight
     - **Description Display**: Info icon shows full commit description in popup
@@ -295,7 +299,8 @@ The dashboard includes the following pages:
   - **Access Control**:
     - Edit functionality restricted to commit authors
   - **User Experience**:
-    - Quickly find specific commits
+    - Quickly find specific commits by content
+    - Search for keywords in commit messages
     - View detailed commit descriptions with info icon
     - Correct metadata (categories, weights) directly from the UI
     - Track AI tool usage per commit
@@ -842,7 +847,7 @@ The dashboard follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 - **MINOR**: New features or significant enhancements
 - **PATCH**: Bug fixes and minor improvements
 
-**Current Version:** `1.7.0` (displayed in footer on all pages)
+**Current Version:** `1.11.3` (displayed in footer on all pages)
 
 ### How to Update the Version
 

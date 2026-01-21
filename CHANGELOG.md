@@ -5,6 +5,19 @@ All notable changes to Metric Mind Dashboard will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.3] - 2026-01-21
+
+### Added
+- **Message Search for Commit Search page**: New text search input to find commits by subject or description
+  - Case-insensitive search using SQL ILIKE
+  - Searches in both commit subject (title) and description (body)
+  - Works alongside existing filters (repository, author, date range, hash)
+  - Full-width search input for longer search terms
+
+### Technical Details
+- Backend: Added `search` query parameter to `GET /api/commits` endpoint
+- Frontend: Added `search` field to search params state and new input field in filters section
+
 ## [1.11.2] - 2026-01-21
 
 ### Fixed
@@ -415,6 +428,7 @@ Security Audit & Update Complete
 
 ## Version History Summary
 
+- **1.11.3**: Message search for Commit Search page (search in subject/description)
 - **1.10.0**: Full-width toggle for Trends page to utilize large displays
 - **1.9.0**: Simplified weight system by removing category_weight
 - **1.8.1**: Fixed commit description popup positioning issues

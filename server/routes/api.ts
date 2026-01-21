@@ -951,7 +951,7 @@ router.get('/personal-performance', async (req: Request, res: Response) => {
 // Search commits with filters
 router.get('/commits', async (req: Request, res: Response) => {
   try {
-    const { repo, author, dateFrom, dateTo, hash, limit = 50, offset = 0 } = req.query;
+    const { repo, author, dateFrom, dateTo, hash, search, limit = 50, offset = 0 } = req.query;
 
     let query = `
       SELECT
@@ -1003,6 +1003,12 @@ router.get('/commits', async (req: Request, res: Response) => {
     if (hash) {
       conditions.push(`c.hash ILIKE $${paramIndex}`);
       params.push(`%${hash}%`);
+      paramIndex++;
+    }
+
+    if (search) {
+      conditions.push(`(c.subject ILIKE $${paramIndex} OR c.description ILIKE $${paramIndex})`);
+      params.push(`%${search}%`);
       paramIndex++;
     }
 
